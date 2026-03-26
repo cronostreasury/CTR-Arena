@@ -339,7 +339,28 @@ requestAnimationFrame(anim)}anim();
 
 // DATA
 const CTR='0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC',LP='0xf118aa245b0627b4752607620d0048b492a5f4fb',TAX='0x96A6cd06338eFE754f200Aba9fF07788c16E5F20';
-const EX=[CTR.toLowerCase(),TAX.toLowerCase(),'0x0000000000000000000000000000000000000000'];
+// Known contracts to exclude: CTR token, tax wallet, zero addr, Obsidian routers, VVS router, common DEX routers on Cronos
+const EX=new Set([CTR,'0x96A6cd06338eFE754f200Aba9fF07788c16E5F20','0x0000000000000000000000000000000000000000',
+'0x8EbC409998ef75661A4C464ff9bbb490586F954a','0x1189331089b6ca8beA989C1F2fFd0EfAdCd33a69',
+'0xCd2E5cC83681d62BEb066Ad0a2ec94Bf301570C9','0x8a44aC7D38B9925D2437803520ED38ae5C3120e5',
+'0x145863Eb42Cf62847A6Ca784e6416C1682b1b2Ae','0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+'0xcd7d16fB918511BF7269eC4f48d61D79Fb26f918','0x145677FC4d9b8F19B5D56d1820c48e0443049a30',
+LP].map(a=>a.toLowerCase()));
+// Cache for contract checks
+const contractCache={};
+async function isContract(addr){
+  const a=addr.toLowerCase();
+  if(EX.has(a))return true;
+  if(contractCache[a]!==undefined)return contractCache[a];
+  try{
+    const res=await fetch('https://evm.cronos.org',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jsonrpc:'2.0',method:'eth_getCode',params:[a,'latest'],id:1})});
+    const data=await res.json();
+    const isC=data.result&&data.result!=='0x'&&data.result!=='0x0'&&data.result.length>4;
+    contractCache[a]=isC;
+    return isC;
+  }catch(e){return false}
+}
 const EXP='https://explorer.cronos.org',DEC=18,SD=30;
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
 let price=0,txs=[],tm={},lb=[];const dbg=document.getElementById('debugLog');
@@ -365,24 +386,40 @@ if(!data){try{const u='https://api.cronoscan.com/api?module=account&action=token
 log('CronosScan...');const r=await fetch(u);data=await r.json();
 if(data.status==='1'&&data.result?.length>0){log('CronosScan OK — '+data.result.length);setSt('LIVE · CronosScan',1)}else{data=null;log('CronosScan empty')}}catch(e){log('CronosScan fail: '+e.message)}}
 if(!data||!data.result?.length){setSt('No data — retry 30s',0);$('feedBody').innerHTML='<div class="tbe">Could not fetch. Auto-retry 30s.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';return}
-txs=data.result;proc();renderFeed();renderLB();updCounts()}
+txs=data.result;await proc();renderFeed();renderLB();updCounts()}
 
 function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
 
-function proc(){tm={};const lp=LP.toLowerCase();const now=Date.now()/1e3;const ss=SS.getTime()/1e3;
+async function proc(){tm={};const lp=LP.toLowerCase();const now=Date.now()/1e3;const ss=SS.getTime()/1e3;
+// First pass: collect all unique trader addresses
+const traderAddrs=new Set();
+txs.forEach(tx=>{const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();const ts=parseInt(tx.timeStamp);
+if(ts<ss)return;let trader;if(f===lp){trader=t}else if(t===lp){trader=f}else return;
+if(!EX.has(trader))traderAddrs.add(trader)});
+// Check which are contracts (batch, max 20 concurrent)
+const addrs=[...traderAddrs];const contracts=new Set();
+log('Checking '+addrs.length+' addresses for contracts...');
+const batchSize=15;
+for(let i=0;i<addrs.length;i+=batchSize){
+  const batch=addrs.slice(i,i+batchSize);
+  const results=await Promise.all(batch.map(a=>isContract(a)));
+  batch.forEach((a,j)=>{if(results[j]){contracts.add(a);EX.add(a)}});
+}
+log('Found '+contracts.size+' contracts, '+( addrs.length-contracts.size)+' wallets');
+// Second pass: build trader map with only EOA wallets
 txs.forEach(tx=>{const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();const val=parseFloat(tx.value)/Math.pow(10,DEC);const usd=val*price;const ts=parseInt(tx.timeStamp);
 if(ts<ss)return;let trader,type;if(f===lp){trader=t;type='buy'}else if(t===lp){trader=f;type='sell'}else return;
-if(EX.includes(trader))return;
+if(EX.has(trader)||contracts.has(trader))return;
 if(!tm[trader])tm[trader]={addr:trader,bV:0,sV:0,ft:ts,lt:ts,n:0};const r=tm[trader];r.n++;r.lt=Math.max(r.lt,ts);r.ft=Math.min(r.ft,ts);
 if(type==='buy'){r.bV+=usd}else{r.sV+=usd}});
 const sl=SD*864e2;
 lb=Object.values(tm).map(t=>{const raw=(3*t.bV)+(1*t.sV);const aw=t.bV>0?Math.max(Math.min((t.bV-t.sV)/t.bV,1),0):0;
 const hb=1+(Math.min(now-t.ft,sl)/sl)*.5;const fs=raw*aw*hb;return{...t,raw,aw,hb,fs}}).sort((a,b)=>b.fs-a.fs);
-log(lb.length+' traders, top: '+(lb[0]?Math.round(lb[0].fs):0))}
+log(lb.length+' wallets ranked, top: '+(lb[0]?Math.round(lb[0].fs):0))}
 
 function renderFeed(){const fb=$('feedBody');const lp=LP.toLowerCase();const ss=SS.getTime()/1e3;
 const trades=txs.filter(tx=>{const ts=parseInt(tx.timeStamp);if(ts<ss)return false;const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();
-if(f!==lp&&t!==lp)return false;const trader=f===lp?t:f;return!EX.includes(trader)}).slice(0,60);
+if(f!==lp&&t!==lp)return false;const trader=f===lp?t:f;return!EX.has(trader)}).slice(0,60);
 if(!trades.length){fb.innerHTML='<div class="tbe">No season trades yet.</div>';return}fb.innerHTML='';
 trades.forEach((tx,i)=>{const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();const ib=f===lp;const w=ib?tx.to:tx.from;
 const val=parseFloat(tx.value)/Math.pow(10,DEC);const usd=val*price;const ts=parseInt(tx.timeStamp);
