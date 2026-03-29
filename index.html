@@ -397,20 +397,31 @@ const EX=new Set([CTR,'0x96A6cd06338eFE754f200Aba9fF07788c16E5F20','0x0000000000
 '0x145863Eb42Cf62847A6Ca784e6416C1682b1b2Ae','0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
 '0xcd7d16fB918511BF7269eC4f48d61D79Fb26f918','0x145677FC4d9b8F19B5D56d1820c48e0443049a30',
 LP].map(a=>a.toLowerCase()));
+// Extra addresses that should never appear as jackpot "user wallets" (reported router/contract candidates)
+const NON_USER_ADDRS=new Set([
+  '0xec68090566397dcc37e54b30cc264b2d68cf0489'
+]);
 // Cache for contract checks
 const contractCache={};
 async function isContract(addr){
   const a=addr.toLowerCase();
-  if(EX.has(a))return true;
+  if(EX.has(a)||NON_USER_ADDRS.has(a))return true;
   if(contractCache[a]!==undefined)return contractCache[a];
-  try{
-    const res=await fetch('https://evm.cronos.org',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({jsonrpc:'2.0',method:'eth_getCode',params:[a,'latest'],id:1})});
-    const data=await res.json();
-    const isC=data.result&&data.result!=='0x'&&data.result!=='0x0'&&data.result.length>4;
-    contractCache[a]=isC;
-    return isC;
-  }catch(e){return false}
+  let lastErr=null;
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const res=await fetch('https://evm.cronos.org',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({jsonrpc:'2.0',method:'eth_getCode',params:[a,'latest'],id:1})});
+      const data=await res.json();
+      const isC=data.result&&data.result!=='0x'&&data.result!=='0x0'&&data.result.length>4;
+      contractCache[a]=!!isC;
+      return contractCache[a];
+    }catch(e){lastErr=e}
+  }
+  // Fail closed: if verification fails, treat address as contract so routers/tokens do not leak into jackpot winners
+  contractCache[a]=true;
+  if(lastErr)log('Contract check failed for '+a.slice(0,10)+'..., treated as contract');
+  return true;
 }
 const EXP='https://explorer.cronos.org',DEC=18,SD=30,TAX_RATE=0.10,JACKPOT_MIN_BUY=10;
 const JACKPOT_TIERS=[
@@ -560,6 +571,7 @@ async function buildTrades(){
       if(sender&&!EX.has(sender)&&!(await isContract(sender)))trader=sender;
     }
     if(!trader)continue;
+    if(NON_USER_ADDRS.has(trader))continue;
     out.push({hash:g.hash,ts:g.ts,type:g.type,trader,ctr:g.ctr,usd:g.ctr*price});
   }
 
@@ -610,7 +622,7 @@ row.innerHTML='<div class="ft '+(tr.type==='buy'?'buy':'sell')+'">'+(tr.type==='
 fb.appendChild(row)})}
 
 function buildJackpots(){
-  jackpots=trades.filter(t=>t.type==='buy'&&t.usd>=JACKPOT_MIN_BUY).map(t=>{
+  jackpots=trades.filter(t=>t.type==='buy'&&t.usd>=JACKPOT_MIN_BUY&&!NON_USER_ADDRS.has((t.trader||'').toLowerCase())).map(t=>{
     const tier=jackpotRoll(t.hash);
     if(!tier)return null;
     const taxPaid=t.usd*TAX_RATE;
