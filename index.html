@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CTR Trading Season | Cronos Treasury Reserve</title>
-<link rel="icon" type="image/png" href="ctr-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -58,7 +57,7 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .hero-chip .dot::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--green);opacity:.3;animation:ring 2s ease-out infinite}
 @keyframes ring{to{transform:scale(2.5);opacity:0}}
 .hero-chip span{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.hero h1{font-family:'Manrope',sans-serif;font-weight:800;font-size:clamp(40px,5.5vw,64px);line-height:1.1;letter-spacing:-.04em;margin-bottom:18px;animation:fu .5s ease-out .1s both}
+.hero h1{font-family:'Manrope',sans-serif;font-weight:800;font-size:clamp(40px,5.5vw,64px);line-height:.95;letter-spacing:-.04em;margin-bottom:18px;animation:fu .5s ease-out .1s both}
 .hero h1 .g{display:block;background:linear-gradient(135deg,var(--accent),#4fd1c5,var(--gold));background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:sh 5s ease-in-out infinite}
 @keyframes sh{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 .hero p{font-size:16px;color:var(--text2);max-width:440px;margin-bottom:32px;animation:fu .5s ease-out .2s both}
@@ -199,58 +198,6 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .rc .rp{font-family:'Manrope',sans-serif;font-weight:800;font-size:36px;color:var(--gold);margin:12px 0}
 .rc p{font-size:13px;color:var(--text2);line-height:1.7}
 
-/* JACKPOT */
-.jp-section{position:relative}
-.jp-banner{background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--border);border-radius:20px;padding:36px;position:relative;overflow:hidden}
-.jp-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--accent),var(--gold))}
-.jp-banner::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(212,168,67,.06),transparent 60%);pointer-events:none}
-.jp-top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-bottom:24px}
-.jp-title-wrap h3{font-family:'Manrope',sans-serif;font-weight:800;font-size:22px;margin-bottom:4px}
-.jp-title-wrap p{color:var(--text3);font-size:13px}
-.jp-pool{text-align:right}
-.jp-pool .jp-pool-label{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em;margin-bottom:4px}
-.jp-pool .jp-pool-val{font-family:'Manrope',sans-serif;font-weight:800;font-size:28px;color:var(--gold)}
-.jp-tiers{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:24px}
-.jp-tier{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center;position:relative;transition:all .3s}
-.jp-tier:hover{border-color:var(--border2);transform:translateY(-2px)}
-.jp-tier .jp-pct{font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;margin-bottom:2px}
-.jp-tier .jp-chance{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4)}
-.jp-tier .jp-rarity{font-family:'DM Mono',monospace;font-size:8px;margin-top:4px;padding:2px 8px;border-radius:99px;display:inline-block}
-.jp-tier:nth-child(1) .jp-pct{color:var(--text2)}
-.jp-tier:nth-child(1) .jp-rarity{color:var(--green);background:rgba(74,222,128,.08)}
-.jp-tier:nth-child(2) .jp-pct{color:var(--accent)}
-.jp-tier:nth-child(2) .jp-rarity{color:var(--accent);background:rgba(100,255,218,.08)}
-.jp-tier:nth-child(3) .jp-pct{color:var(--gold)}
-.jp-tier:nth-child(3) .jp-rarity{color:var(--gold);background:rgba(212,168,67,.08)}
-.jp-tier:nth-child(4) .jp-pct{color:#f97316}
-.jp-tier:nth-child(4) .jp-rarity{color:#f97316;background:rgba(249,115,22,.08)}
-.jp-tier:nth-child(5) .jp-pct{color:var(--red)}
-.jp-tier:nth-child(5) .jp-rarity{color:var(--red);background:rgba(239,68,68,.08)}
-.jp-tier:nth-child(5){border-color:rgba(239,68,68,.2);box-shadow:0 0 20px rgba(239,68,68,.05)}
-.jp-info{font-size:12px;color:var(--text3);line-height:1.8;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px 20px}
-.jp-info strong{color:var(--text)}
-
-/* Jackpot feed entries */
-.jp-feed{display:flex;align-items:center;gap:12px;padding:12px 20px;background:linear-gradient(90deg,rgba(212,168,67,.04),transparent);border-bottom:1px solid rgba(212,168,67,.1);animation:jpFlash 1s ease-out}
-@keyframes jpFlash{0%{background:rgba(212,168,67,.12)}100%{background:linear-gradient(90deg,rgba(212,168,67,.04),transparent)}}
-.jp-feed .jp-tag{font-family:'DM Mono',monospace;font-weight:700;font-size:10px;color:var(--gold);background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.2);padding:4px 12px;border-radius:6px;white-space:nowrap}
-.jp-feed .jp-msg{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)}
-.jp-feed .jp-msg .jp-win{color:var(--gold);font-weight:700}
-.jp-feed .jp-msg .jp-wallet{color:var(--accent);opacity:.7}
-.jp-feed .jp-time{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);margin-left:auto;white-space:nowrap}
-
-/* Jackpot popup toast */
-.jp-toast{position:fixed;top:80px;right:24px;background:linear-gradient(135deg,var(--bg3),var(--bg2));border:1px solid rgba(212,168,67,.3);border-radius:16px;padding:20px 24px;z-index:200;box-shadow:0 12px 40px rgba(0,0,0,.5),0 0 30px rgba(212,168,67,.1);transform:translateX(120%);transition:transform .5s cubic-bezier(.68,-.55,.27,1.55);max-width:340px}
-.jp-toast.show{transform:translateX(0)}
-.jp-toast .jp-toast-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.jp-toast .jp-toast-head span:first-child{font-size:24px}
-.jp-toast .jp-toast-head span:last-child{font-family:'Manrope',sans-serif;font-weight:800;font-size:16px;color:var(--gold)}
-.jp-toast .jp-toast-body{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);line-height:1.6}
-.jp-toast .jp-toast-body .jp-toast-amt{color:var(--gold);font-weight:700;font-size:16px}
-
-@media(max-width:768px){.jp-tiers{grid-template-columns:repeat(3,1fr)}.jp-top{flex-direction:column}.jp-pool{text-align:left}}
-@media(max-width:640px){.jp-tiers{grid-template-columns:repeat(2,1fr)}}
-
 footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
 .fti{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
 .ftl{font-family:'DM Mono',monospace;font-size:11px;color:var(--text4)}.ftl .ftc{color:var(--text3);font-size:9px;display:block;margin-top:4px;word-break:break-all}
@@ -307,70 +254,6 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
     </div>
     <div class="prog-row"><div class="prog-bg"><div class="prog-fill" id="seasonFill" style="width:0%"></div></div><div class="prog-labels"><span>Day <span id="dayNum">0</span>/30</span><span id="seasonPct">0%</span></div></div>
   </section>
-
-  <!-- JACKPOT -->
-  <section class="section jp-section" id="jackpot">
-    <div class="sec-head"><div class="sec-icon" style="background:rgba(212,168,67,.1)">🎰</div><div class="sec-title">Tax Return Jackpot</div></div>
-    <div class="sec-sub">Every buy ≥ $10 triggers a random jackpot roll. Win back 1–10% of your buy tax!</div>
-    <div class="jp-banner">
-      <div class="jp-top">
-        <div class="jp-title-wrap">
-          <h3>🎲 Random Tax Return on Every Buy</h3>
-          <p>CTR has a 10% buy tax. The Jackpot system randomly returns 1–10% of that tax back to you.</p>
-        </div>
-        <div class="jp-pool">
-          <div class="jp-pool-label">Recent Jackpots</div>
-          <div class="jp-pool-val" id="jpCount">0</div>
-        </div>
-      </div>
-      <div class="jp-tiers">
-        <div class="jp-tier">
-          <div class="jp-pct">1%</div>
-          <div class="jp-chance">~15% chance</div>
-          <div class="jp-rarity">Common</div>
-        </div>
-        <div class="jp-tier">
-          <div class="jp-pct">3%</div>
-          <div class="jp-chance">~8% chance</div>
-          <div class="jp-rarity">Uncommon</div>
-        </div>
-        <div class="jp-tier">
-          <div class="jp-pct">5%</div>
-          <div class="jp-chance">~4% chance</div>
-          <div class="jp-rarity">Rare</div>
-        </div>
-        <div class="jp-tier">
-          <div class="jp-pct">8%</div>
-          <div class="jp-chance">~1.5% chance</div>
-          <div class="jp-rarity">Epic</div>
-        </div>
-        <div class="jp-tier">
-          <div class="jp-pct">10%</div>
-          <div class="jp-chance">~0.5% chance</div>
-          <div class="jp-rarity">Legendary</div>
-        </div>
-      </div>
-      <div class="jp-info">
-        <strong>How it works:</strong> Every buy of $10 or more is automatically entered into the jackpot. The transaction hash determines your roll — it's provably fair and on-chain verifiable. A 1% return means you get 1% of your 10% tax back (e.g. buy $100 → pay $10 tax → win $0.10 back). A <strong style="color:var(--red)">10% Legendary</strong> return means the full tax is refunded — ultra rare! ~71% of buys win nothing, but every buy is a fresh roll.
-      </div>
-    </div>
-    <!-- Recent jackpot wins feed -->
-    <div class="card" style="margin-top:16px">
-      <div class="card-hd">
-        <div class="card-t">🎰 Recent Jackpot Wins</div>
-        <div class="badge bl"><div class="d"></div>LIVE</div>
-      </div>
-      <div style="max-height:240px;overflow-y:auto" id="jpFeed">
-        <div class="tbl" style="padding:24px"><span style="color:var(--text4);font-size:12px">Waiting for trade data...</span></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- JACKPOT TOAST -->
-  <div class="jp-toast" id="jpToast">
-    <div class="jp-toast-head"><span>🎰</span><span>JACKPOT!</span></div>
-    <div class="jp-toast-body" id="jpToastBody"></div>
-  </div>
 
   <section class="section" id="feed">
     <div class="sec-head"><div class="sec-icon" style="background:rgba(100,255,218,.06)">📡</div><div class="sec-title">Live Trade Feed</div></div>
@@ -480,7 +363,7 @@ async function isContract(addr){
 }
 const EXP='https://explorer.cronos.org',DEC=18,SD=30;
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
-let price=0,txs=[],tm={},lb=[];const dbg=document.getElementById('debugLog');
+let price=0,txs=[],trades=[],tm={},lb=[];const dbg=document.getElementById('debugLog');
 function log(m){console.log('[CTR]',m);dbg.style.display='block';dbg.innerHTML+=new Date().toLocaleTimeString()+' — '+m+'<br>';dbg.scrollTop=dbg.scrollHeight}
 function fU(n){if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)}
 function fN(n){return n.toLocaleString('en-US',{maximumFractionDigits:0})}
@@ -495,53 +378,163 @@ $('sPriceChange').textContent=(ch>=0?'+':'')+ch.toFixed(2)+'% (24h)';$('sPriceCh
 $('sVolume').textContent=fU(vol);$('sVolume').classList.remove('ld');$('sLiquidity').textContent=fU(liq);$('sLiquidity').classList.remove('ld');
 updTicker(price,ch,vol,liq,buys,sells);log('Dex OK — $'+price.toFixed(6));}catch(e){log('Dex ERR: '+e.message)}}
 
+async function fetchJson(url,opts={},timeoutMs=12000){
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const r=await fetch(url,{...opts,signal:ctrl.signal});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return await r.json()
+  }
+  finally{clearTimeout(t)}
+}
+
 async function fetchTx(){let data=null;
-try{const u='https://cronos.org/explorer/api?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
-log('Blockscout...');const r=await fetch(u);data=await r.json();
-if(data.status==='1'&&data.result?.length>0){log('Blockscout OK — '+data.result.length);setSt('LIVE · Blockscout',1)}else{data=null;log('Blockscout empty')}}catch(e){log('Blockscout fail: '+e.message)}
-if(!data){try{const u='https://api.cronoscan.com/api?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
-log('CronosScan...');const r=await fetch(u);data=await r.json();
-if(data.status==='1'&&data.result?.length>0){log('CronosScan OK — '+data.result.length);setSt('LIVE · CronosScan',1)}else{data=null;log('CronosScan empty')}}catch(e){log('CronosScan fail: '+e.message)}}
+const legacy='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
+const sources=[
+  {name:'Cronos Explorer',url:'https://explorer.cronos.org/api'+legacy,fmt:'legacy'},
+  {name:'Cronos.org Explorer',url:'https://cronos.org/explorer/api'+legacy,fmt:'legacy'},
+  {name:'CronosScan',url:'https://api.cronoscan.com/api'+legacy,fmt:'legacy'},
+  {name:'Cronos API v2',url:'https://explorer.cronos.org/api/v2/addresses/'+LP+'/token-transfers?type=ERC-20&filter='+CTR,fmt:'v2'}
+];
+
+for(const src of sources){
+  try{
+    log(src.name+'...');
+    const res=await fetchJson(src.url);
+    if(src.fmt==='legacy'&&res?.status==='1'&&Array.isArray(res.result)&&res.result.length){
+      data={result:res.result};
+      setSt('LIVE · '+src.name,1);
+      log(src.name+' OK — '+res.result.length);
+      break;
+    }
+    if(src.fmt==='v2'&&Array.isArray(res?.items)&&res.items.length){
+      const mapped=res.items.map(i=>({
+        hash:i.transaction_hash,
+        from:i.from?.hash||'',
+        to:i.to?.hash||'',
+        value:i.total?.value||'0',
+        timeStamp:String(Math.floor(new Date(i.timestamp).getTime()/1000))
+      }));
+      data={result:mapped};
+      setSt('LIVE · '+src.name,1);
+      log(src.name+' OK — '+mapped.length);
+      break;
+    }
+    log(src.name+' empty');
+  }catch(e){
+    log(src.name+' fail: '+e.message);
+  }
+}
+
 if(!data||!data.result?.length){setSt('No data — retry 30s',0);$('feedBody').innerHTML='<div class="tbe">Could not fetch. Auto-retry 30s.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';return}
-txs=data.result;await proc();renderFeed();renderLB();updCounts();processJackpots();triggerJpToasts()}
+txs=data.result;await buildTrades();await proc();renderFeed();renderLB();updCounts()}
 
 function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
 
-async function proc(){tm={};const lp=LP.toLowerCase();const now=Date.now()/1e3;const ss=SS.getTime()/1e3;
-// First pass: collect all unique trader addresses
-const traderAddrs=new Set();
-txs.forEach(tx=>{const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();const ts=parseInt(tx.timeStamp);
-if(ts<ss)return;let trader;if(f===lp){trader=t}else if(t===lp){trader=f}else return;
-if(!EX.has(trader))traderAddrs.add(trader)});
-// Check which are contracts (batch, max 20 concurrent)
-const addrs=[...traderAddrs];const contracts=new Set();
-log('Checking '+addrs.length+' addresses for contracts...');
-const batchSize=15;
-for(let i=0;i<addrs.length;i+=batchSize){
-  const batch=addrs.slice(i,i+batchSize);
-  const results=await Promise.all(batch.map(a=>isContract(a)));
-  batch.forEach((a,j)=>{if(results[j]){contracts.add(a);EX.add(a)}});
+const txSenderCache={};
+const balanceCache={};
+async function getTxSender(hash){
+  const h=(hash||'').toLowerCase();
+  if(!h)return null;
+  if(txSenderCache[h]!==undefined)return txSenderCache[h];
+  try{
+    const res=await fetchJson('https://evm.cronos.org',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jsonrpc:'2.0',method:'eth_getTransactionByHash',params:[h],id:1})
+    });
+    const from=res?.result?.from?.toLowerCase()||null;
+    txSenderCache[h]=from;
+    return from;
+  }catch(e){txSenderCache[h]=null;return null}
 }
-log('Found '+contracts.size+' contracts, '+( addrs.length-contracts.size)+' wallets');
-// Second pass: build trader map with only EOA wallets
-txs.forEach(tx=>{const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();const val=parseFloat(tx.value)/Math.pow(10,DEC);const usd=val*price;const ts=parseInt(tx.timeStamp);
-if(ts<ss)return;let trader,type;if(f===lp){trader=t;type='buy'}else if(t===lp){trader=f;type='sell'}else return;
-if(EX.has(trader)||contracts.has(trader))return;
-if(!tm[trader])tm[trader]={addr:trader,bV:0,sV:0,ft:ts,lt:ts,n:0};const r=tm[trader];r.n++;r.lt=Math.max(r.lt,ts);r.ft=Math.min(r.ft,ts);
-if(type==='buy'){r.bV+=usd}else{r.sV+=usd}});
-const sl=SD*864e2;
-lb=Object.values(tm).map(t=>{const raw=(3*t.bV)+(1*t.sV);const aw=t.bV>0?Math.max(Math.min((t.bV-t.sV)/t.bV,1),0):0;
-const hb=1+(Math.min(now-t.ft,sl)/sl)*.5;const fs=raw*aw*hb;return{...t,raw,aw,hb,fs}}).sort((a,b)=>b.fs-a.fs);
+
+async function buildTrades(){
+  const lp=LP.toLowerCase();
+  const ss=SS.getTime()/1e3;
+  const grouped=new Map();
+
+  txs.forEach((tx,i)=>{
+    const f=(tx.from||'').toLowerCase(),t=(tx.to||'').toLowerCase();
+    const ts=parseInt(tx.timeStamp||'0');
+    if(!ts||ts<ss)return;
+    const isBuy=f===lp,isSell=t===lp;
+    if(!isBuy&&!isSell)return;
+    const counterpart=isBuy?t:f;
+    const hash=(tx.hash||tx.transactionHash||('nohash-'+i)).toLowerCase();
+    const key=hash+':'+(isBuy?'buy':'sell');
+    const val=parseFloat(tx.value||'0')/Math.pow(10,DEC);
+    if(!grouped.has(key))grouped.set(key,{hash,ts,type:isBuy?'buy':'sell',counterparts:new Set(),ctr:0});
+    const g=grouped.get(key);
+    g.ts=Math.max(g.ts,ts);
+    g.counterparts.add(counterpart);
+    g.ctr+=val;
+  });
+
+  const raw=[...grouped.values()].sort((a,b)=>b.ts-a.ts);
+  const out=[];
+  log('Resolving traders for '+raw.length+' unique swaps...');
+
+  for(const g of raw){
+    let trader=null;
+    for(const c of g.counterparts){
+      if(!c||EX.has(c))continue;
+      const cIsContract=await isContract(c);
+      if(!cIsContract){trader=c;break}
+    }
+    if(!trader&&g.hash&&!g.hash.startsWith('nohash-')){
+      const sender=await getTxSender(g.hash);
+      if(sender&&!EX.has(sender)&&!(await isContract(sender)))trader=sender;
+    }
+    if(!trader)continue;
+    out.push({hash:g.hash,ts:g.ts,type:g.type,trader,ctr:g.ctr,usd:g.ctr*price});
+  }
+
+  trades=out;
+  log('Built '+trades.length+' deduplicated trades');
+}
+
+async function getCtrBalance(addr){
+  const a=(addr||'').toLowerCase();
+  if(!a)return 0;
+  if(balanceCache[a]!==undefined)return balanceCache[a];
+  try{
+    const data='0x70a08231000000000000000000000000'+a.slice(2);
+    const res=await fetchJson('https://evm.cronos.org',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:CTR,data},'latest'],id:1})
+    });
+    const raw=res?.result||'0x0';
+    const bal=Number(BigInt(raw))/Math.pow(10,DEC);
+    balanceCache[a]=Number.isFinite(bal)?bal:0;
+    return balanceCache[a];
+  }catch(e){balanceCache[a]=0;return 0}
+}
+
+async function proc(){tm={};const now=Date.now()/1e3;const sl=SD*864e2;
+trades.forEach(tr=>{const trader=tr.trader;if(!trader||EX.has(trader))return;
+if(!tm[trader])tm[trader]={addr:trader,bV:0,sV:0,bC:0,sC:0,balC:0,ft:tr.ts,lt:tr.ts,n:0};const r=tm[trader];r.n++;r.lt=Math.max(r.lt,tr.ts);r.ft=Math.min(r.ft,tr.ts);
+if(tr.type==='buy'){r.bV+=tr.usd;r.bC+=tr.ctr}else{r.sV+=tr.usd;r.sC+=tr.ctr}});
+
+const wallets=Object.keys(tm);
+for(let i=0;i<wallets.length;i+=12){
+  const chunk=wallets.slice(i,i+12);
+  const bals=await Promise.all(chunk.map(a=>getCtrBalance(a)));
+  chunk.forEach((a,j)=>{tm[a].balC=bals[j]});
+}
+
+lb=Object.values(tm).map(t=>{const raw=(3*t.bV)+(1*t.sV);const awBase=t.bV>0?Math.max(Math.min((t.bV-t.sV)/t.bV,1),0):0;
+const holdRatio=t.bC>0?Math.max(Math.min(t.balC/t.bC,1),0):0;const aw=awBase*holdRatio;
+const hb=1+(Math.min(now-t.ft,sl)/sl)*.5;const fs=raw*aw*hb;return{...t,awBase,holdRatio,aw,hb,fs}}).sort((a,b)=>b.fs-a.fs);
 log(lb.length+' wallets ranked, top: '+(lb[0]?Math.round(lb[0].fs):0))}
 
-function renderFeed(){const fb=$('feedBody');const lp=LP.toLowerCase();const ss=SS.getTime()/1e3;
-const trades=txs.filter(tx=>{const ts=parseInt(tx.timeStamp);if(ts<ss)return false;const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();
-if(f!==lp&&t!==lp)return false;const trader=f===lp?t:f;return!EX.has(trader)}).slice(0,60);
-if(!trades.length){fb.innerHTML='<div class="tbe">No season trades yet.</div>';return}fb.innerHTML='';
-trades.forEach((tx,i)=>{const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();const ib=f===lp;const w=ib?tx.to:tx.from;
-const val=parseFloat(tx.value)/Math.pow(10,DEC);const usd=val*price;const ts=parseInt(tx.timeStamp);
+function renderFeed(){const fb=$('feedBody');const feedTrades=trades.slice(0,60);
+if(!feedTrades.length){fb.innerHTML='<div class="tbe">No season trades yet.</div>';return}fb.innerHTML='';
+feedTrades.forEach((tr,i)=>{
 const row=document.createElement('div');row.className='fr'+(i<3?' fnew':'');
-row.innerHTML='<div class="ft '+(ib?'buy':'sell')+'">'+(ib?'BUY':'SELL')+'</div><div class="fw"><a href="'+EXP+'/address/'+w+'" target="_blank" title="'+w+'">'+w+'</a></div><div class="fa" style="color:'+(ib?'var(--green)':'var(--red)')+'">'+(ib?'+':'-')+fU(usd)+'</div><div class="fa" style="color:var(--text2)">'+fC(val)+' CTR</div><div class="ftm">'+tA(ts)+'</div>';
+row.innerHTML='<div class="ft '+(tr.type==='buy'?'buy':'sell')+'">'+(tr.type==='buy'?'BUY':'SELL')+'</div><div class="fw"><a href="'+EXP+'/address/'+tr.trader+'" target="_blank" title="'+tr.trader+'">'+tr.trader+'</a></div><div class="fa" style="color:'+(tr.type==='buy'?'var(--green)':'var(--red)')+'">'+(tr.type==='buy'?'+':'-')+fU(tr.usd)+'</div><div class="fa" style="color:var(--text2)">'+fC(tr.ctr)+' CTR</div><div class="ftm">'+tA(tr.ts)+'</div>';
 fb.appendChild(row)})}
 
 function renderLB(){const tb=$('lbBody');if(!lb.length){tb.innerHTML='<tr><td colspan="7" class="tbe">No traders yet.</td></tr>';$('lbCount').textContent='0';return}
@@ -566,30 +559,45 @@ if(!trader){
   log('Wallet not in cache, fetching directly for '+inp.slice(0,10)+'...');
   try{
     let data=null;
-    // Try Blockscout first
-    try{const u='https://cronos.org/explorer/api?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=200&sort=desc';
-    const r=await fetch(u);data=await r.json();if(data.status!=='1'||!data.result?.length)data=null;}catch(e){}
-    // Fallback CronosScan
-    if(!data){try{const u='https://api.cronoscan.com/api?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=200&sort=desc';
-    const r=await fetch(u);data=await r.json();if(data.status!=='1'||!data.result?.length)data=null;}catch(e){}}
+    const legacy='?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=200&sort=desc';
+    const walletSources=[
+      {url:'https://explorer.cronos.org/api'+legacy,fmt:'legacy'},
+      {url:'https://cronos.org/explorer/api'+legacy,fmt:'legacy'},
+      {url:'https://api.cronoscan.com/api'+legacy,fmt:'legacy'},
+      {url:'https://explorer.cronos.org/api/v2/addresses/'+inp+'/token-transfers?type=ERC-20&filter='+CTR,fmt:'v2'}
+    ];
+
+    for(const src of walletSources){
+      try{
+        const res=await fetchJson(src.url);
+        if(src.fmt==='legacy'&&res?.status==='1'&&Array.isArray(res.result)&&res.result.length){data={result:res.result};break}
+        if(src.fmt==='v2'&&Array.isArray(res?.items)&&res.items.length){
+          data={result:res.items.map(i=>({
+            from:i.from?.hash||'',to:i.to?.hash||'',value:i.total?.value||'0',timeStamp:String(Math.floor(new Date(i.timestamp).getTime()/1000))
+          }))};
+          break;
+        }
+      }catch(e){}
+    }
 
     if(data&&data.result){
       const lp=LP.toLowerCase();const ss=SS.getTime()/1e3;
-      let bV=0,sV=0,ft=Infinity,lt=0,n=0;
+      let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0,n=0;
       data.result.forEach(tx=>{
         const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();
         const val=parseFloat(tx.value)/Math.pow(10,DEC);const usd=val*price;const ts=parseInt(tx.timeStamp);
         if(ts<ss)return;
         // Buy = wallet received CTR from LP; Sell = wallet sent CTR to LP
-        if(f===lp&&t===inp){bV+=usd;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)}
-        else if(f===inp&&t===lp){sV+=usd;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)}
+        if(f===lp&&t===inp){bV+=usd;bC+=val;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)}
+        else if(f===inp&&t===lp){sV+=usd;sC+=val;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)}
       });
       if(n>0){
-        tm[inp]={addr:inp,bV,sV,ft,lt,n};
+        tm[inp]={addr:inp,bV,sV,bC,sC,ft,lt,n};
         // Recalculate score for this wallet
-        const raw=(3*bV)+(1*sV);const aw=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
+        const raw=(3*bV)+(1*sV);const awBase=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
+        const balC=await getCtrBalance(inp);const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;
         const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-ft,sl)/sl)*.5;const fs=raw*aw*hb;
-        trader={addr:inp,bV,sV,ft,lt,n,raw,aw,hb,fs};
+        trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n,raw,awBase,holdRatio,aw,hb,fs};
         log('Found '+n+' trades for wallet, score: '+Math.round(fs));
       } else {log('No season trades found for this wallet')}
     }
@@ -599,8 +607,9 @@ if(!trader){
 if(!trader||!trader.fs&&!trader.bV){$('dRank').textContent='N/A';$('dScore').textContent='0';$('dAntiWash').textContent='N/A';$('dBonus').textContent='N/A';$('dpLabel').textContent='No trades this season';$('dpPct').textContent='—';$('dpFill').style.width='0%';return}
 
 // If trader came from cache (tm), recalculate score fields if missing
-if(!trader.fs){const raw=(3*trader.bV)+(1*trader.sV);const aw=trader.bV>0?Math.max(Math.min((trader.bV-trader.sV)/trader.bV,1),0):0;
-const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-trader.ft,sl)/sl)*.5;trader={...trader,raw,aw,hb,fs:raw*aw*hb}}
+if(!trader.fs){const raw=(3*trader.bV)+(1*trader.sV);const awBase=trader.bV>0?Math.max(Math.min((trader.bV-trader.sV)/trader.bV,1),0):0;
+const bC=trader.bC||trader.bV/Math.max(price,1e-12);const balC=trader.balC??await getCtrBalance(inp);const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;
+const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-trader.ft,sl)/sl)*.5;trader={...trader,bC,balC,raw,awBase,holdRatio,aw,hb,fs:raw*aw*hb}}
 
 const rank=lb.findIndex(t=>t.addr===inp)+1;const t=trader.fs?trader:lb[rank-1]||trader;
 $('dRank').textContent=rank>0?'#'+rank:(t.fs>0?'Unranked*':'N/A');
@@ -621,114 +630,6 @@ $('seasonFill').style.width=pct+'%';$('dayNum').textContent=Math.min(SD,Math.cei
 function updTicker(p,ch,vol,liq,buys,sells){const cc=ch>=0?'var(--green)':'var(--red)';
 const items=[{l:'CTR',v:'$'+p.toFixed(6),c:'var(--gold)'},{l:'24h',v:(ch>=0?'+':'')+ch.toFixed(2)+'%',c:cc},{l:'Vol',v:fU(vol),c:'var(--text)'},{l:'Liq',v:fU(liq),c:'var(--text)'},{l:'Buys',v:String(buys),c:'var(--green)'},{l:'Sells',v:String(sells),c:'var(--red)'},{l:'Pair',v:'CTR/WCRO',c:'var(--accent)'}];
 $('ticker').innerHTML=[...items,...items].map((it,i)=>(i?'<div class="tsep"></div>':'')+'<div class="ti"><span class="tl">'+it.l+'</span><span class="tv" style="color:'+it.c+'">'+it.v+'</span></div>').join('')}
-
-// ─── JACKPOT SYSTEM ───
-// Every buy >= $10 gets a deterministic roll based on tx hash
-// Distribution: ~71% nothing, ~15% 1%, ~8% 3%, ~4% 5%, ~1.5% 8%, ~0.5% 10%
-const JP_TIERS = [
-  { pct: 1, label: '1%', rarity: 'Common',    color: 'var(--green)',  threshold: 71, cumulative: 86 },
-  { pct: 3, label: '3%', rarity: 'Uncommon',  color: 'var(--accent)', threshold: 86, cumulative: 94 },
-  { pct: 5, label: '5%', rarity: 'Rare',      color: 'var(--gold)',   threshold: 94, cumulative: 98 },
-  { pct: 8, label: '8%', rarity: 'Epic',      color: '#f97316',       threshold: 98, cumulative: 99.5 },
-  { pct: 10, label: '10%', rarity: 'LEGENDARY', color: 'var(--red)',  threshold: 99.5, cumulative: 100 },
-];
-const MIN_JP_BUY = 10; // Minimum $10 buy to qualify
-let jackpotWins = [];
-let jpToastQueue = [];
-let jpToastShowing = false;
-
-// Deterministic roll from transaction hash — provably fair
-function jpRoll(hash) {
-  if (!hash || hash.length < 10) return null;
-  // Use last 8 hex chars of hash as seed
-  const seed = parseInt(hash.slice(-8), 16);
-  const roll = (seed % 10000) / 100; // 0.00 - 99.99
-  if (roll < 71) return null; // No win
-  for (const tier of JP_TIERS) {
-    if (roll < tier.cumulative) return tier;
-  }
-  return JP_TIERS[JP_TIERS.length - 1];
-}
-
-function processJackpots() {
-  jackpotWins = [];
-  // Only process buys >= $10
-  const buyTrades = trades.filter(t => t.type === 'buy' && t.usd >= MIN_JP_BUY);
-  buyTrades.forEach(tr => {
-    const tier = jpRoll(tr.hash);
-    if (tier) {
-      const taxPaid = tr.usd * 0.10; // 10% buy tax
-      const returned = taxPaid * (tier.pct / 100);
-      jackpotWins.push({
-        trader: tr.trader,
-        hash: tr.hash,
-        ts: tr.ts,
-        buyUsd: tr.usd,
-        taxPaid,
-        returnPct: tier.pct,
-        returned,
-        rarity: tier.rarity,
-        color: tier.color,
-        label: tier.label
-      });
-    }
-  });
-  jackpotWins.sort((a, b) => b.ts - a.ts);
-  renderJackpotFeed();
-  $('jpCount').textContent = jackpotWins.length;
-}
-
-function renderJackpotFeed() {
-  const feed = $('jpFeed');
-  if (!jackpotWins.length) {
-    feed.innerHTML = '<div class="tbl" style="padding:24px"><span style="color:var(--text4);font-size:12px">No jackpots triggered yet this season.</span></div>';
-    return;
-  }
-  feed.innerHTML = '';
-  jackpotWins.slice(0, 20).forEach((jp, i) => {
-    const el = document.createElement('div');
-    el.className = 'jp-feed' + (i < 2 ? ' fnew' : '');
-    const shortW = jp.trader.slice(0, 6) + '...' + jp.trader.slice(-4);
-    el.innerHTML = '<div class="jp-tag" style="border-color:' + jp.color + ';color:' + jp.color + '">' + jp.label + ' ' + jp.rarity + '</div>' +
-      '<div class="jp-msg"><span class="jp-wallet">' + shortW + '</span> bought ' + fU(jp.buyUsd) + ' → won <span class="jp-win" style="color:' + jp.color + '">' + fU(jp.returned) + '</span> tax return</div>' +
-      '<div class="jp-time">' + tA(jp.ts) + '</div>';
-    feed.appendChild(el);
-  });
-}
-
-function showJpToast(jp) {
-  const toast = $('jpToast');
-  const body = $('jpToastBody');
-  const shortW = jp.trader.slice(0, 8) + '...' + jp.trader.slice(-4);
-  body.innerHTML = '<span class="jp-toast-amt" style="color:' + jp.color + '">' + jp.label + ' Tax Return!</span><br>' +
-    shortW + ' won <strong style="color:' + jp.color + '">' + fU(jp.returned) + '</strong> back from a ' + fU(jp.buyUsd) + ' buy<br>' +
-    '<span style="color:' + jp.color + ';font-size:10px">' + jp.rarity + '</span>';
-  toast.classList.add('show');
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => { jpToastShowing = false; processToastQueue(); }, 600);
-  }, 4000);
-}
-
-function processToastQueue() {
-  if (jpToastShowing || !jpToastQueue.length) return;
-  jpToastShowing = true;
-  showJpToast(jpToastQueue.shift());
-}
-
-// Called after trades are processed — show toast for newest wins
-function triggerJpToasts() {
-  if (!jackpotWins.length) return;
-  // Show toasts for the 3 most recent wins (if any are new)
-  const recent = jackpotWins.slice(0, 3);
-  recent.forEach(jp => {
-    if (!jp._toasted) {
-      jp._toasted = true;
-      jpToastQueue.push(jp);
-    }
-  });
-  processToastQueue();
-}
 
 updCD();setInterval(updCD,1e3);updTicker(0,0,0,0,0,0);
 async function init(){log('Init CTR Trading Season...');await fetchDex();await fetchTx()}
