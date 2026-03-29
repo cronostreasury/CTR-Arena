@@ -378,13 +378,51 @@ $('sPriceChange').textContent=(ch>=0?'+':'')+ch.toFixed(2)+'% (24h)';$('sPriceCh
 $('sVolume').textContent=fU(vol);$('sVolume').classList.remove('ld');$('sLiquidity').textContent=fU(liq);$('sLiquidity').classList.remove('ld');
 updTicker(price,ch,vol,liq,buys,sells);log('Dex OK — $'+price.toFixed(6));}catch(e){log('Dex ERR: '+e.message)}}
 
+async function fetchJson(url,timeoutMs=12000){
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{const r=await fetch(url,{signal:ctrl.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}
+  finally{clearTimeout(t)}
+}
+
 async function fetchTx(){let data=null;
-try{const u='https://cronos.org/explorer/api?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
-log('Blockscout...');const r=await fetch(u);data=await r.json();
-if(data.status==='1'&&data.result?.length>0){log('Blockscout OK — '+data.result.length);setSt('LIVE · Blockscout',1)}else{data=null;log('Blockscout empty')}}catch(e){log('Blockscout fail: '+e.message)}
-if(!data){try{const u='https://api.cronoscan.com/api?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
-log('CronosScan...');const r=await fetch(u);data=await r.json();
-if(data.status==='1'&&data.result?.length>0){log('CronosScan OK — '+data.result.length);setSt('LIVE · CronosScan',1)}else{data=null;log('CronosScan empty')}}catch(e){log('CronosScan fail: '+e.message)}}
+const legacy='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
+const sources=[
+  {name:'Cronos Explorer',url:'https://explorer.cronos.org/api'+legacy,fmt:'legacy'},
+  {name:'Cronos.org Explorer',url:'https://cronos.org/explorer/api'+legacy,fmt:'legacy'},
+  {name:'CronosScan',url:'https://api.cronoscan.com/api'+legacy,fmt:'legacy'},
+  {name:'Cronos API v2',url:'https://explorer.cronos.org/api/v2/addresses/'+LP+'/token-transfers?type=ERC-20&filter='+CTR,fmt:'v2'}
+];
+
+for(const src of sources){
+  try{
+    log(src.name+'...');
+    const res=await fetchJson(src.url);
+    if(src.fmt==='legacy'&&res?.status==='1'&&Array.isArray(res.result)&&res.result.length){
+      data={result:res.result};
+      setSt('LIVE · '+src.name,1);
+      log(src.name+' OK — '+res.result.length);
+      break;
+    }
+    if(src.fmt==='v2'&&Array.isArray(res?.items)&&res.items.length){
+      const mapped=res.items.map(i=>({
+        hash:i.transaction_hash,
+        from:i.from?.hash||'',
+        to:i.to?.hash||'',
+        value:i.total?.value||'0',
+        timeStamp:String(Math.floor(new Date(i.timestamp).getTime()/1000))
+      }));
+      data={result:mapped};
+      setSt('LIVE · '+src.name,1);
+      log(src.name+' OK — '+mapped.length);
+      break;
+    }
+    log(src.name+' empty');
+  }catch(e){
+    log(src.name+' fail: '+e.message);
+  }
+}
+
 if(!data||!data.result?.length){setSt('No data — retry 30s',0);$('feedBody').innerHTML='<div class="tbe">Could not fetch. Auto-retry 30s.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';return}
 txs=data.result;await proc();renderFeed();renderLB();updCounts()}
 
@@ -449,12 +487,26 @@ if(!trader){
   log('Wallet not in cache, fetching directly for '+inp.slice(0,10)+'...');
   try{
     let data=null;
-    // Try Blockscout first
-    try{const u='https://cronos.org/explorer/api?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=200&sort=desc';
-    const r=await fetch(u);data=await r.json();if(data.status!=='1'||!data.result?.length)data=null;}catch(e){}
-    // Fallback CronosScan
-    if(!data){try{const u='https://api.cronoscan.com/api?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=200&sort=desc';
-    const r=await fetch(u);data=await r.json();if(data.status!=='1'||!data.result?.length)data=null;}catch(e){}}
+    const legacy='?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=200&sort=desc';
+    const walletSources=[
+      {url:'https://explorer.cronos.org/api'+legacy,fmt:'legacy'},
+      {url:'https://cronos.org/explorer/api'+legacy,fmt:'legacy'},
+      {url:'https://api.cronoscan.com/api'+legacy,fmt:'legacy'},
+      {url:'https://explorer.cronos.org/api/v2/addresses/'+inp+'/token-transfers?type=ERC-20&filter='+CTR,fmt:'v2'}
+    ];
+
+    for(const src of walletSources){
+      try{
+        const res=await fetchJson(src.url);
+        if(src.fmt==='legacy'&&res?.status==='1'&&Array.isArray(res.result)&&res.result.length){data={result:res.result};break}
+        if(src.fmt==='v2'&&Array.isArray(res?.items)&&res.items.length){
+          data={result:res.items.map(i=>({
+            from:i.from?.hash||'',to:i.to?.hash||'',value:i.total?.value||'0',timeStamp:String(Math.floor(new Date(i.timestamp).getTime()/1000))
+          }))};
+          break;
+        }
+      }catch(e){}
+    }
 
     if(data&&data.result){
       const lp=LP.toLowerCase();const ss=SS.getTime()/1e3;
