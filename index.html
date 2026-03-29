@@ -289,13 +289,13 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
         </div>
       </div>
       <div class="jgrid">
-        <div class="jtile"><div class="jp" style="color:var(--green)">10%</div><div class="jc">~12% chance</div><div class="jr c">Common</div></div>
-        <div class="jtile"><div class="jp" style="color:var(--accent)">25%</div><div class="jc">~5% chance</div><div class="jr u">Uncommon</div></div>
-        <div class="jtile"><div class="jp" style="color:var(--gold)">50%</div><div class="jc">~1.8% chance</div><div class="jr r">Rare</div></div>
-        <div class="jtile"><div class="jp" style="color:#fb923c">75%</div><div class="jc">~0.5% chance</div><div class="jr e">Epic</div></div>
-        <div class="jtile"><div class="jp" style="color:#ff6b6b">100%</div><div class="jc">~0.2% chance</div><div class="jr l">Legendary</div></div>
+        <div class="jtile"><div class="jp" style="color:var(--green)">10%</div><div class="jc">Tax refund tier</div><div class="jr c">Common</div></div>
+        <div class="jtile"><div class="jp" style="color:var(--accent)">25%</div><div class="jc">Tax refund tier</div><div class="jr u">Uncommon</div></div>
+        <div class="jtile"><div class="jp" style="color:var(--gold)">50%</div><div class="jc">Tax refund tier</div><div class="jr r">Rare</div></div>
+        <div class="jtile"><div class="jp" style="color:#fb923c">75%</div><div class="jc">Tax refund tier</div><div class="jr e">Epic</div></div>
+        <div class="jtile"><div class="jp" style="color:#ff6b6b">100%</div><div class="jc">Tax refund tier</div><div class="jr l">Legendary</div></div>
       </div>
-      <div class="jhow" id="jHow"><strong>How it works:</strong> only <strong>BUY</strong> trades with value <strong>≥ $10</strong> can trigger. Your transaction hash determines a deterministic jackpot roll (same tx = same result). Most eligible buys get no refund; winning buys get 10%–100% of paid taxes back.</div>
+      <div class="jhow" id="jHow"><strong>How it works:</strong> only <strong>BUY</strong> trades with value <strong>≥ $10</strong> can trigger. Your transaction hash determines a deterministic jackpot roll (same tx = same result). Winners get <strong>10%–100%</strong> of their paid taxes back.</div>
     </div>
     <div class="card jfeed">
       <div class="card-hd"><div class="card-t">🎁 Recent Jackpot Wins</div><div class="badge bl"><div class="d"></div>LIVE</div></div>
@@ -422,7 +422,6 @@ const JACKPOT_TIERS=[
 ];
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
 const JACKPOT_TOTAL_WEIGHT=JACKPOT_TIERS.reduce((s,t)=>s+t.weight,0);
-const JACKPOT_WIN_PERMILLE=Math.round((JACKPOT_TOTAL_WEIGHT/1000)*1000)/1000;
 let price=0,txs=[],trades=[],tm={},lb=[],jackpots=[];const dbg=document.getElementById('debugLog');
 function log(m){console.log('[CTR]',m);dbg.style.display='block';dbg.innerHTML+=new Date().toLocaleTimeString()+' — '+m+'<br>';dbg.scrollTop=dbg.scrollHeight}
 function fU(n){if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)}
@@ -733,8 +732,7 @@ $('ticker').innerHTML=[...items,...items].map((it,i)=>(i?'<div class="tsep"></di
 
 updCD();setInterval(updCD,1e3);updTicker(0,0,0,0,0,0);
 async function init(){
-  const miss=(100-(JACKPOT_WIN_PERMILLE*100)).toFixed(1);
-  $('jHow').innerHTML='<strong>How it works:</strong> only <strong>BUY</strong> trades with value <strong>≥ $'+JACKPOT_MIN_BUY+'</strong> can trigger. Your transaction hash determines a deterministic jackpot roll (same tx = same result). About <strong>'+miss+'%</strong> of eligible buys get no refund; winners get <strong>10%–100%</strong> of their paid taxes back.';
+  $('jHow').innerHTML='<strong>How it works:</strong> only <strong>BUY</strong> trades with value <strong>≥ $'+JACKPOT_MIN_BUY+'</strong> can trigger. Your transaction hash determines a deterministic jackpot roll (same tx = same result). Winners get <strong>10%–100%</strong> of their paid taxes back.';
   log('Init CTR Trading Season...');
   await fetchDex();
   await fetchTx();
