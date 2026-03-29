@@ -363,7 +363,7 @@ async function isContract(addr){
 }
 const EXP='https://explorer.cronos.org',DEC=18,SD=30;
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
-let price=0,txs=[],tm={},lb=[];const dbg=document.getElementById('debugLog');
+let price=0,txs=[],trades=[],tm={},lb=[];const dbg=document.getElementById('debugLog');
 function log(m){console.log('[CTR]',m);dbg.style.display='block';dbg.innerHTML+=new Date().toLocaleTimeString()+' — '+m+'<br>';dbg.scrollTop=dbg.scrollHeight}
 function fU(n){if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)}
 function fN(n){return n.toLocaleString('en-US',{maximumFractionDigits:0})}
@@ -378,53 +378,131 @@ $('sPriceChange').textContent=(ch>=0?'+':'')+ch.toFixed(2)+'% (24h)';$('sPriceCh
 $('sVolume').textContent=fU(vol);$('sVolume').classList.remove('ld');$('sLiquidity').textContent=fU(liq);$('sLiquidity').classList.remove('ld');
 updTicker(price,ch,vol,liq,buys,sells);log('Dex OK — $'+price.toFixed(6));}catch(e){log('Dex ERR: '+e.message)}}
 
+async function fetchJson(url,opts={},timeoutMs=12000){
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{const r=await fetch(url,{...opts,signal:ctrl.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}
+  finally{clearTimeout(t)}
+}
+
 async function fetchTx(){let data=null;
-try{const u='https://cronos.org/explorer/api?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
-log('Blockscout...');const r=await fetch(u);data=await r.json();
-if(data.status==='1'&&data.result?.length>0){log('Blockscout OK — '+data.result.length);setSt('LIVE · Blockscout',1)}else{data=null;log('Blockscout empty')}}catch(e){log('Blockscout fail: '+e.message)}
-if(!data){try{const u='https://api.cronoscan.com/api?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
-log('CronosScan...');const r=await fetch(u);data=await r.json();
-if(data.status==='1'&&data.result?.length>0){log('CronosScan OK — '+data.result.length);setSt('LIVE · CronosScan',1)}else{data=null;log('CronosScan empty')}}catch(e){log('CronosScan fail: '+e.message)}}
+const legacy='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
+const sources=[
+  {name:'Cronos Explorer',url:'https://explorer.cronos.org/api'+legacy,fmt:'legacy'},
+  {name:'Cronos.org Explorer',url:'https://cronos.org/explorer/api'+legacy,fmt:'legacy'},
+  {name:'CronosScan',url:'https://api.cronoscan.com/api'+legacy,fmt:'legacy'},
+  {name:'Cronos API v2',url:'https://explorer.cronos.org/api/v2/addresses/'+LP+'/token-transfers?type=ERC-20&filter='+CTR,fmt:'v2'}
+];
+
+for(const src of sources){
+  try{
+    log(src.name+'...');
+    const res=await fetchJson(src.url);
+    if(src.fmt==='legacy'&&res?.status==='1'&&Array.isArray(res.result)&&res.result.length){
+      data={result:res.result};
+      setSt('LIVE · '+src.name,1);
+      log(src.name+' OK — '+res.result.length);
+      break;
+    }
+    if(src.fmt==='v2'&&Array.isArray(res?.items)&&res.items.length){
+      const mapped=res.items.map(i=>({
+        hash:i.transaction_hash,
+        from:i.from?.hash||'',
+        to:i.to?.hash||'',
+        value:i.total?.value||'0',
+        timeStamp:String(Math.floor(new Date(i.timestamp).getTime()/1000))
+      }));
+      data={result:mapped};
+      setSt('LIVE · '+src.name,1);
+      log(src.name+' OK — '+mapped.length);
+      break;
+    }
+    log(src.name+' empty');
+  }catch(e){
+    log(src.name+' fail: '+e.message);
+  }
+}
+
 if(!data||!data.result?.length){setSt('No data — retry 30s',0);$('feedBody').innerHTML='<div class="tbe">Could not fetch. Auto-retry 30s.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';return}
-txs=data.result;await proc();renderFeed();renderLB();updCounts()}
+txs=data.result;await buildTrades();await proc();renderFeed();renderLB();updCounts()}
 
 function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
 
-async function proc(){tm={};const lp=LP.toLowerCase();const now=Date.now()/1e3;const ss=SS.getTime()/1e3;
-// First pass: collect all unique trader addresses
-const traderAddrs=new Set();
-txs.forEach(tx=>{const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();const ts=parseInt(tx.timeStamp);
-if(ts<ss)return;let trader;if(f===lp){trader=t}else if(t===lp){trader=f}else return;
-if(!EX.has(trader))traderAddrs.add(trader)});
-// Check which are contracts (batch, max 20 concurrent)
-const addrs=[...traderAddrs];const contracts=new Set();
-log('Checking '+addrs.length+' addresses for contracts...');
-const batchSize=15;
-for(let i=0;i<addrs.length;i+=batchSize){
-  const batch=addrs.slice(i,i+batchSize);
-  const results=await Promise.all(batch.map(a=>isContract(a)));
-  batch.forEach((a,j)=>{if(results[j]){contracts.add(a);EX.add(a)}});
+const txSenderCache={};
+async function getTxSender(hash){
+  const h=(hash||'').toLowerCase();
+  if(!h)return null;
+  if(txSenderCache[h]!==undefined)return txSenderCache[h];
+  try{
+    const res=await fetchJson('https://evm.cronos.org',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jsonrpc:'2.0',method:'eth_getTransactionByHash',params:[h],id:1})
+    });
+    const from=res?.result?.from?.toLowerCase()||null;
+    txSenderCache[h]=from;
+    return from;
+  }catch(e){txSenderCache[h]=null;return null}
 }
-log('Found '+contracts.size+' contracts, '+( addrs.length-contracts.size)+' wallets');
-// Second pass: build trader map with only EOA wallets
-txs.forEach(tx=>{const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();const val=parseFloat(tx.value)/Math.pow(10,DEC);const usd=val*price;const ts=parseInt(tx.timeStamp);
-if(ts<ss)return;let trader,type;if(f===lp){trader=t;type='buy'}else if(t===lp){trader=f;type='sell'}else return;
-if(EX.has(trader)||contracts.has(trader))return;
-if(!tm[trader])tm[trader]={addr:trader,bV:0,sV:0,ft:ts,lt:ts,n:0};const r=tm[trader];r.n++;r.lt=Math.max(r.lt,ts);r.ft=Math.min(r.ft,ts);
-if(type==='buy'){r.bV+=usd}else{r.sV+=usd}});
-const sl=SD*864e2;
+
+async function buildTrades(){
+  const lp=LP.toLowerCase();
+  const ss=SS.getTime()/1e3;
+  const grouped=new Map();
+
+  txs.forEach((tx,i)=>{
+    const f=(tx.from||'').toLowerCase(),t=(tx.to||'').toLowerCase();
+    const ts=parseInt(tx.timeStamp||'0');
+    if(!ts||ts<ss)return;
+    const isBuy=f===lp,isSell=t===lp;
+    if(!isBuy&&!isSell)return;
+    const counterpart=isBuy?t:f;
+    const hash=(tx.hash||tx.transactionHash||('nohash-'+i)).toLowerCase();
+    const key=hash+':'+(isBuy?'buy':'sell');
+    const val=parseFloat(tx.value||'0')/Math.pow(10,DEC);
+    if(!grouped.has(key))grouped.set(key,{hash,ts,type:isBuy?'buy':'sell',counterparts:new Set(),ctr:0});
+    const g=grouped.get(key);
+    g.ts=Math.max(g.ts,ts);
+    g.counterparts.add(counterpart);
+    g.ctr+=val;
+  });
+
+  const raw=[...grouped.values()].sort((a,b)=>b.ts-a.ts);
+  const out=[];
+  log('Resolving traders for '+raw.length+' unique swaps...');
+
+  for(const g of raw){
+    let trader=null;
+    for(const c of g.counterparts){
+      if(!c||EX.has(c))continue;
+      const cIsContract=await isContract(c);
+      if(!cIsContract){trader=c;break}
+    }
+    if(!trader&&g.hash&&!g.hash.startsWith('nohash-')){
+      const sender=await getTxSender(g.hash);
+      if(sender&&!EX.has(sender))trader=sender;
+    }
+    if(!trader)continue;
+    out.push({hash:g.hash,ts:g.ts,type:g.type,trader,ctr:g.ctr,usd:g.ctr*price});
+  }
+
+  trades=out;
+  log('Built '+trades.length+' deduplicated trades');
+}
+
+async function proc(){tm={};const now=Date.now()/1e3;const sl=SD*864e2;
+trades.forEach(tr=>{const trader=tr.trader;if(!trader||EX.has(trader))return;
+if(!tm[trader])tm[trader]={addr:trader,bV:0,sV:0,ft:tr.ts,lt:tr.ts,n:0};const r=tm[trader];r.n++;r.lt=Math.max(r.lt,tr.ts);r.ft=Math.min(r.ft,tr.ts);
+if(tr.type==='buy'){r.bV+=tr.usd}else{r.sV+=tr.usd}});
 lb=Object.values(tm).map(t=>{const raw=(3*t.bV)+(1*t.sV);const aw=t.bV>0?Math.max(Math.min((t.bV-t.sV)/t.bV,1),0):0;
 const hb=1+(Math.min(now-t.ft,sl)/sl)*.5;const fs=raw*aw*hb;return{...t,raw,aw,hb,fs}}).sort((a,b)=>b.fs-a.fs);
 log(lb.length+' wallets ranked, top: '+(lb[0]?Math.round(lb[0].fs):0))}
 
-function renderFeed(){const fb=$('feedBody');const lp=LP.toLowerCase();const ss=SS.getTime()/1e3;
-const trades=txs.filter(tx=>{const ts=parseInt(tx.timeStamp);if(ts<ss)return false;const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();
-if(f!==lp&&t!==lp)return false;const trader=f===lp?t:f;return!EX.has(trader)}).slice(0,60);
-if(!trades.length){fb.innerHTML='<div class="tbe">No season trades yet.</div>';return}fb.innerHTML='';
-trades.forEach((tx,i)=>{const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();const ib=f===lp;const w=ib?tx.to:tx.from;
-const val=parseFloat(tx.value)/Math.pow(10,DEC);const usd=val*price;const ts=parseInt(tx.timeStamp);
+function renderFeed(){const fb=$('feedBody');const feedTrades=trades.slice(0,60);
+if(!feedTrades.length){fb.innerHTML='<div class="tbe">No season trades yet.</div>';return}fb.innerHTML='';
+feedTrades.forEach((tr,i)=>{
 const row=document.createElement('div');row.className='fr'+(i<3?' fnew':'');
-row.innerHTML='<div class="ft '+(ib?'buy':'sell')+'">'+(ib?'BUY':'SELL')+'</div><div class="fw"><a href="'+EXP+'/address/'+w+'" target="_blank" title="'+w+'">'+w+'</a></div><div class="fa" style="color:'+(ib?'var(--green)':'var(--red)')+'">'+(ib?'+':'-')+fU(usd)+'</div><div class="fa" style="color:var(--text2)">'+fC(val)+' CTR</div><div class="ftm">'+tA(ts)+'</div>';
+row.innerHTML='<div class="ft '+(tr.type==='buy'?'buy':'sell')+'">'+(tr.type==='buy'?'BUY':'SELL')+'</div><div class="fw"><a href="'+EXP+'/address/'+tr.trader+'" target="_blank" title="'+tr.trader+'">'+tr.trader+'</a></div><div class="fa" style="color:'+(tr.type==='buy'?'var(--green)':'var(--red)')+'">'+(tr.type==='buy'?'+':'-')+fU(tr.usd)+'</div><div class="fa" style="color:var(--text2)">'+fC(tr.ctr)+' CTR</div><div class="ftm">'+tA(tr.ts)+'</div>';
 fb.appendChild(row)})}
 
 function renderLB(){const tb=$('lbBody');if(!lb.length){tb.innerHTML='<tr><td colspan="7" class="tbe">No traders yet.</td></tr>';$('lbCount').textContent='0';return}
@@ -449,12 +527,26 @@ if(!trader){
   log('Wallet not in cache, fetching directly for '+inp.slice(0,10)+'...');
   try{
     let data=null;
-    // Try Blockscout first
-    try{const u='https://cronos.org/explorer/api?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=200&sort=desc';
-    const r=await fetch(u);data=await r.json();if(data.status!=='1'||!data.result?.length)data=null;}catch(e){}
-    // Fallback CronosScan
-    if(!data){try{const u='https://api.cronoscan.com/api?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=200&sort=desc';
-    const r=await fetch(u);data=await r.json();if(data.status!=='1'||!data.result?.length)data=null;}catch(e){}}
+    const legacy='?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=200&sort=desc';
+    const walletSources=[
+      {url:'https://explorer.cronos.org/api'+legacy,fmt:'legacy'},
+      {url:'https://cronos.org/explorer/api'+legacy,fmt:'legacy'},
+      {url:'https://api.cronoscan.com/api'+legacy,fmt:'legacy'},
+      {url:'https://explorer.cronos.org/api/v2/addresses/'+inp+'/token-transfers?type=ERC-20&filter='+CTR,fmt:'v2'}
+    ];
+
+    for(const src of walletSources){
+      try{
+        const res=await fetchJson(src.url);
+        if(src.fmt==='legacy'&&res?.status==='1'&&Array.isArray(res.result)&&res.result.length){data={result:res.result};break}
+        if(src.fmt==='v2'&&Array.isArray(res?.items)&&res.items.length){
+          data={result:res.items.map(i=>({
+            from:i.from?.hash||'',to:i.to?.hash||'',value:i.total?.value||'0',timeStamp:String(Math.floor(new Date(i.timestamp).getTime()/1000))
+          }))};
+          break;
+        }
+      }catch(e){}
+    }
 
     if(data&&data.result){
       const lp=LP.toLowerCase();const ss=SS.getTime()/1e3;
