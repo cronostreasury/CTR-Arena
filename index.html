@@ -433,6 +433,7 @@ txs=data.result;await buildTrades();await proc();renderFeed();renderLB();updCoun
 function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
 
 const txSenderCache={};
+const balanceCache={};
 async function getTxSender(hash){
   const h=(hash||'').toLowerCase();
   if(!h)return null;
@@ -484,7 +485,7 @@ async function buildTrades(){
     }
     if(!trader&&g.hash&&!g.hash.startsWith('nohash-')){
       const sender=await getTxSender(g.hash);
-      if(sender&&!EX.has(sender))trader=sender;
+      if(sender&&!EX.has(sender)&&!(await isContract(sender)))trader=sender;
     }
     if(!trader)continue;
     out.push({hash:g.hash,ts:g.ts,type:g.type,trader,ctr:g.ctr,usd:g.ctr*price});
@@ -494,12 +495,39 @@ async function buildTrades(){
   log('Built '+trades.length+' deduplicated trades');
 }
 
+async function getCtrBalance(addr){
+  const a=(addr||'').toLowerCase();
+  if(!a)return 0;
+  if(balanceCache[a]!==undefined)return balanceCache[a];
+  try{
+    const data='0x70a08231000000000000000000000000'+a.slice(2);
+    const res=await fetchJson('https://evm.cronos.org',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:CTR,data},'latest'],id:1})
+    });
+    const raw=res?.result||'0x0';
+    const bal=Number(BigInt(raw))/Math.pow(10,DEC);
+    balanceCache[a]=Number.isFinite(bal)?bal:0;
+    return balanceCache[a];
+  }catch(e){balanceCache[a]=0;return 0}
+}
+
 async function proc(){tm={};const now=Date.now()/1e3;const sl=SD*864e2;
 trades.forEach(tr=>{const trader=tr.trader;if(!trader||EX.has(trader))return;
-if(!tm[trader])tm[trader]={addr:trader,bV:0,sV:0,ft:tr.ts,lt:tr.ts,n:0};const r=tm[trader];r.n++;r.lt=Math.max(r.lt,tr.ts);r.ft=Math.min(r.ft,tr.ts);
-if(tr.type==='buy'){r.bV+=tr.usd}else{r.sV+=tr.usd}});
-lb=Object.values(tm).map(t=>{const raw=(3*t.bV)+(1*t.sV);const aw=t.bV>0?Math.max(Math.min((t.bV-t.sV)/t.bV,1),0):0;
-const hb=1+(Math.min(now-t.ft,sl)/sl)*.5;const fs=raw*aw*hb;return{...t,raw,aw,hb,fs}}).sort((a,b)=>b.fs-a.fs);
+if(!tm[trader])tm[trader]={addr:trader,bV:0,sV:0,bC:0,sC:0,balC:0,ft:tr.ts,lt:tr.ts,n:0};const r=tm[trader];r.n++;r.lt=Math.max(r.lt,tr.ts);r.ft=Math.min(r.ft,tr.ts);
+if(tr.type==='buy'){r.bV+=tr.usd;r.bC+=tr.ctr}else{r.sV+=tr.usd;r.sC+=tr.ctr}});
+
+const wallets=Object.keys(tm);
+for(let i=0;i<wallets.length;i+=12){
+  const chunk=wallets.slice(i,i+12);
+  const bals=await Promise.all(chunk.map(a=>getCtrBalance(a)));
+  chunk.forEach((a,j)=>{tm[a].balC=bals[j]});
+}
+
+lb=Object.values(tm).map(t=>{const raw=(3*t.bV)+(1*t.sV);const awBase=t.bV>0?Math.max(Math.min((t.bV-t.sV)/t.bV,1),0):0;
+const holdRatio=t.bC>0?Math.max(Math.min(t.balC/t.bC,1),0):0;const aw=awBase*holdRatio;
+const hb=1+(Math.min(now-t.ft,sl)/sl)*.5;const fs=raw*aw*hb;return{...t,awBase,holdRatio,aw,hb,fs}}).sort((a,b)=>b.fs-a.fs);
 log(lb.length+' wallets ranked, top: '+(lb[0]?Math.round(lb[0].fs):0))}
 
 function renderFeed(){const fb=$('feedBody');const feedTrades=trades.slice(0,60);
@@ -554,21 +582,22 @@ if(!trader){
 
     if(data&&data.result){
       const lp=LP.toLowerCase();const ss=SS.getTime()/1e3;
-      let bV=0,sV=0,ft=Infinity,lt=0,n=0;
+      let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0,n=0;
       data.result.forEach(tx=>{
         const f=tx.from.toLowerCase(),t=tx.to.toLowerCase();
         const val=parseFloat(tx.value)/Math.pow(10,DEC);const usd=val*price;const ts=parseInt(tx.timeStamp);
         if(ts<ss)return;
         // Buy = wallet received CTR from LP; Sell = wallet sent CTR to LP
-        if(f===lp&&t===inp){bV+=usd;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)}
-        else if(f===inp&&t===lp){sV+=usd;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)}
+        if(f===lp&&t===inp){bV+=usd;bC+=val;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)}
+        else if(f===inp&&t===lp){sV+=usd;sC+=val;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)}
       });
       if(n>0){
-        tm[inp]={addr:inp,bV,sV,ft,lt,n};
+        tm[inp]={addr:inp,bV,sV,bC,sC,ft,lt,n};
         // Recalculate score for this wallet
-        const raw=(3*bV)+(1*sV);const aw=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
+        const raw=(3*bV)+(1*sV);const awBase=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
+        const balC=await getCtrBalance(inp);const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;
         const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-ft,sl)/sl)*.5;const fs=raw*aw*hb;
-        trader={addr:inp,bV,sV,ft,lt,n,raw,aw,hb,fs};
+        trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n,raw,awBase,holdRatio,aw,hb,fs};
         log('Found '+n+' trades for wallet, score: '+Math.round(fs));
       } else {log('No season trades found for this wallet')}
     }
@@ -578,8 +607,9 @@ if(!trader){
 if(!trader||!trader.fs&&!trader.bV){$('dRank').textContent='N/A';$('dScore').textContent='0';$('dAntiWash').textContent='N/A';$('dBonus').textContent='N/A';$('dpLabel').textContent='No trades this season';$('dpPct').textContent='—';$('dpFill').style.width='0%';return}
 
 // If trader came from cache (tm), recalculate score fields if missing
-if(!trader.fs){const raw=(3*trader.bV)+(1*trader.sV);const aw=trader.bV>0?Math.max(Math.min((trader.bV-trader.sV)/trader.bV,1),0):0;
-const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-trader.ft,sl)/sl)*.5;trader={...trader,raw,aw,hb,fs:raw*aw*hb}}
+if(!trader.fs){const raw=(3*trader.bV)+(1*trader.sV);const awBase=trader.bV>0?Math.max(Math.min((trader.bV-trader.sV)/trader.bV,1),0):0;
+const bC=trader.bC||trader.bV/Math.max(price,1e-12);const balC=trader.balC??await getCtrBalance(inp);const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;
+const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-trader.ft,sl)/sl)*.5;trader={...trader,bC,balC,raw,awBase,holdRatio,aw,hb,fs:raw*aw*hb}}
 
 const rank=lb.findIndex(t=>t.addr===inp)+1;const t=trader.fs?trader:lb[rank-1]||trader;
 $('dRank').textContent=rank>0?'#'+rank:(t.fs>0?'Unranked*':'N/A');
