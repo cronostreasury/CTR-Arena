@@ -149,6 +149,25 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 @keyframes fsl{from{opacity:0;transform:translateX(-10px);background:rgba(100,255,218,.03)}to{opacity:1;transform:translateX(0);background:transparent}}
 .fnew{animation:fsl .5s ease-out}
 
+/* JACKPOT */
+.jcard{background:linear-gradient(135deg,rgba(36,49,82,.9),rgba(17,24,39,.95));border:1px solid var(--border2);border-radius:22px;padding:24px;position:relative;overflow:hidden}
+.jcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--accent),var(--gold))}
+.jtop{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.jtitle{font-family:'Manrope',sans-serif;font-weight:800;font-size:42px;line-height:1;color:var(--gold)}
+.jgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.jtile{background:rgba(11,15,26,.8);border:1px solid var(--border2);border-radius:14px;padding:14px;text-align:center}
+.jtile .jp{font-family:'Manrope',sans-serif;font-weight:800;font-size:36px;line-height:1}
+.jtile .jc{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);margin-top:6px}
+.jtile .jr{display:inline-flex;margin-top:8px;padding:3px 9px;border-radius:999px;font-family:'DM Mono',monospace;font-size:9px;font-weight:600}
+.jr.c{background:rgba(74,222,128,.12);color:var(--green)}.jr.u{background:rgba(100,255,218,.12);color:var(--accent)}.jr.r{background:rgba(212,168,67,.14);color:var(--gold)}.jr.e{background:rgba(249,115,22,.14);color:#fb923c}.jr.l{background:rgba(239,68,68,.16);color:#ff6b6b}
+.jhow{margin-top:14px;background:rgba(11,15,26,.65);border:1px solid var(--border);border-radius:14px;padding:14px;color:var(--text2);font-size:13px}
+.jfeed{margin-top:16px}
+.jw-row{display:grid;grid-template-columns:110px 1fr 120px 110px 82px;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(30,45,74,.35);align-items:center}
+.jw-row.h{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em}
+.jtag{display:inline-flex;justify-content:center;align-items:center;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;border-radius:8px}
+.jtag.p10{background:rgba(74,222,128,.12);color:var(--green)}.jtag.p25{background:rgba(100,255,218,.12);color:var(--accent)}.jtag.p50{background:rgba(212,168,67,.12);color:var(--gold)}.jtag.p75{background:rgba(249,115,22,.14);color:#fb923c}.jtag.p100{background:rgba(239,68,68,.16);color:#ff6b6b}
+.jmono{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis}
+
 /* DASH */
 .dir{display:flex;gap:12px;margin-bottom:24px}
 .dinp{flex:1;background:var(--bg3);border:2px solid var(--border2);border-radius:12px;padding:14px 18px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;transition:all .3s}
@@ -206,8 +225,8 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
 #debugLog{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px;max-height:90px;overflow-y:auto;display:none}
 
 @media(max-width:960px){.hero{grid-template-columns:1fr;text-align:center}.hero p{margin:0 auto 32px}.hero-btns{justify-content:center}.hero-img{max-width:400px;margin:0 auto}}
-@media(max-width:768px){.stats-row{grid-template-columns:repeat(3,1fr)}.dg{grid-template-columns:1fr 1fr}.eg,.rg{grid-template-columns:1fr}.exg{grid-template-columns:1fr}.fr{grid-template-columns:60px 1fr 80px 80px 60px;font-size:10px}}
-@media(max-width:640px){.hero h1{font-size:36px}.stats-row{grid-template-columns:repeat(2,1fr)}.dg{grid-template-columns:1fr}.dir{flex-direction:column}.cd-wrap{padding:18px 20px;gap:8px}.cd-n{width:52px;height:52px;font-size:32px}.nav-links{display:none}.tb th:nth-child(n+5),.tb td:nth-child(n+5){display:none}.fr{grid-template-columns:55px 1fr 70px 60px}.fr>:nth-child(4){display:none}}
+@media(max-width:768px){.stats-row{grid-template-columns:repeat(3,1fr)}.dg{grid-template-columns:1fr 1fr}.eg,.rg{grid-template-columns:1fr}.exg{grid-template-columns:1fr}.fr{grid-template-columns:60px 1fr 80px 80px 60px;font-size:10px}.jgrid{grid-template-columns:repeat(2,1fr)}.jw-row{grid-template-columns:94px 1fr 94px 94px 66px}}
+@media(max-width:640px){.hero h1{font-size:36px}.stats-row{grid-template-columns:repeat(2,1fr)}.dg{grid-template-columns:1fr}.dir{flex-direction:column}.cd-wrap{padding:18px 20px;gap:8px}.cd-n{width:52px;height:52px;font-size:32px}.nav-links{display:none}.tb th:nth-child(n+5),.tb td:nth-child(n+5){display:none}.fr{grid-template-columns:55px 1fr 70px 60px}.fr>:nth-child(4){display:none}.jgrid{grid-template-columns:1fr}.jw-row{grid-template-columns:84px 1fr 86px}.jw-row>:nth-child(4),.jw-row>:nth-child(5){display:none}}
 </style>
 </head>
 <body>
@@ -253,6 +272,38 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
       <div class="cd-unit"><div class="cd-n" id="cdS">00</div><div class="cd-l">Sec</div></div>
     </div>
     <div class="prog-row"><div class="prog-bg"><div class="prog-fill" id="seasonFill" style="width:0%"></div></div><div class="prog-labels"><span>Day <span id="dayNum">0</span>/30</span><span id="seasonPct">0%</span></div></div>
+  </section>
+
+  <section class="section" id="jackpot">
+    <div class="sec-head"><div class="sec-icon" style="background:rgba(212,168,67,.06)">🎰</div><div class="sec-title">Tax Return Jackpot</div></div>
+    <div class="sec-sub">Every buy ≥ $10 gets one random jackpot roll. CTR tax = 10%, winners receive 10%–100% of their paid tax back.</div>
+    <div class="jcard">
+      <div class="jtop">
+        <div>
+          <div class="card-t" style="font-size:38px">🎲 Random Tax Return on Every Buy</div>
+          <div style="color:var(--text3);margin-top:6px">Bigger refunds are much rarer. Full 100% tax refund is ultra rare.</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);letter-spacing:.14em;text-transform:uppercase">Recent Jackpots</div>
+          <div class="jtitle" id="jackpotCount">0</div>
+        </div>
+      </div>
+      <div class="jgrid">
+        <div class="jtile"><div class="jp" style="color:var(--green)">10%</div><div class="jc">Tax refund tier</div><div class="jr c">Common</div></div>
+        <div class="jtile"><div class="jp" style="color:var(--accent)">25%</div><div class="jc">Tax refund tier</div><div class="jr u">Uncommon</div></div>
+        <div class="jtile"><div class="jp" style="color:var(--gold)">50%</div><div class="jc">Tax refund tier</div><div class="jr r">Rare</div></div>
+        <div class="jtile"><div class="jp" style="color:#fb923c">75%</div><div class="jc">Tax refund tier</div><div class="jr e">Epic</div></div>
+        <div class="jtile"><div class="jp" style="color:#ff6b6b">100%</div><div class="jc">Tax refund tier</div><div class="jr l">Legendary</div></div>
+      </div>
+      <div class="jhow" id="jHow"><strong>How it works:</strong> only <strong>BUY</strong> trades with value <strong>≥ $10</strong> can trigger. Your transaction hash determines a deterministic jackpot roll (same tx = same result). Winners get <strong>10%–100%</strong> of their paid taxes back.</div>
+    </div>
+    <div class="card jfeed">
+      <div class="card-hd"><div class="card-t">🎁 Recent Jackpot Wins</div><div class="badge bl"><div class="d"></div>LIVE</div></div>
+      <div id="jackpotBody">
+        <div class="jw-row h"><span>Refund</span><span>Wallet</span><span>Buy</span><span>Tax Back</span><span>Time</span></div>
+        <div class="tbe">Waiting for trade data...</div>
+      </div>
+    </div>
   </section>
 
   <section class="section" id="feed">
@@ -361,15 +412,36 @@ async function isContract(addr){
     return isC;
   }catch(e){return false}
 }
-const EXP='https://explorer.cronos.org',DEC=18,SD=30;
+const EXP='https://explorer.cronos.org',DEC=18,SD=30,TAX_RATE=0.10,JACKPOT_MIN_BUY=10;
+const JACKPOT_TIERS=[
+  {pct:1.00,weight:2,className:'p100'},
+  {pct:0.75,weight:5,className:'p75'},
+  {pct:0.50,weight:18,className:'p50'},
+  {pct:0.25,weight:50,className:'p25'},
+  {pct:0.10,weight:120,className:'p10'}
+];
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
-let price=0,txs=[],trades=[],tm={},lb=[];const dbg=document.getElementById('debugLog');
+const JACKPOT_TOTAL_WEIGHT=JACKPOT_TIERS.reduce((s,t)=>s+t.weight,0);
+let price=0,txs=[],trades=[],tm={},lb=[],jackpots=[];const dbg=document.getElementById('debugLog');
 function log(m){console.log('[CTR]',m);dbg.style.display='block';dbg.innerHTML+=new Date().toLocaleTimeString()+' — '+m+'<br>';dbg.scrollTop=dbg.scrollHeight}
 function fU(n){if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)}
 function fN(n){return n.toLocaleString('en-US',{maximumFractionDigits:0})}
 function fC(n){if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toFixed(0)}
 function tA(ts){const s=Math.floor((Date.now()-ts*1e3)/1e3);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<864e2)return Math.floor(s/3600)+'h ago';return Math.floor(s/864e2)+'d ago'}
 function $(id){return document.getElementById(id)}
+function hashToPermille(hash){
+  const h=(hash||'').replace(/^0x/,'').padEnd(64,'0');
+  let acc=0;
+  for(let i=0;i<12;i++)acc=(acc*17+parseInt(h[i],16))%1000;
+  return acc;
+}
+function jackpotRoll(hash){
+  const roll=hashToPermille(hash);
+  if(roll>=JACKPOT_TOTAL_WEIGHT)return null;
+  let sum=0;
+  for(const tier of JACKPOT_TIERS){sum+=tier.weight;if(roll<sum)return tier}
+  return null;
+}
 
 async function fetchDex(){try{const r=await fetch('https://api.dexscreener.com/latest/dex/pairs/cronos/'+LP);const d=await r.json();const p=d.pair;if(!p)return;
 price=parseFloat(p.priceUsd)||0;const ch=parseFloat(p.priceChange?.h24)||0;const vol=p.volume?.h24||0;const liq=p.liquidity?.usd||0;const buys=p.txns?.h24?.buys||0;const sells=p.txns?.h24?.sells||0;
@@ -427,8 +499,8 @@ for(const src of sources){
   }
 }
 
-if(!data||!data.result?.length){setSt('No data — retry 30s',0);$('feedBody').innerHTML='<div class="tbe">Could not fetch. Auto-retry 30s.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';return}
-txs=data.result;await buildTrades();await proc();renderFeed();renderLB();updCounts()}
+if(!data||!data.result?.length){setSt('No data — retry 30s',0);$('feedBody').innerHTML='<div class="tbe">Could not fetch. Auto-retry 30s.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';jackpots=[];renderJackpots();return}
+txs=data.result;await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts()}
 
 function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
 
@@ -537,6 +609,33 @@ const row=document.createElement('div');row.className='fr'+(i<3?' fnew':'');
 row.innerHTML='<div class="ft '+(tr.type==='buy'?'buy':'sell')+'">'+(tr.type==='buy'?'BUY':'SELL')+'</div><div class="fw"><a href="'+EXP+'/address/'+tr.trader+'" target="_blank" title="'+tr.trader+'">'+tr.trader+'</a></div><div class="fa" style="color:'+(tr.type==='buy'?'var(--green)':'var(--red)')+'">'+(tr.type==='buy'?'+':'-')+fU(tr.usd)+'</div><div class="fa" style="color:var(--text2)">'+fC(tr.ctr)+' CTR</div><div class="ftm">'+tA(tr.ts)+'</div>';
 fb.appendChild(row)})}
 
+function buildJackpots(){
+  jackpots=trades.filter(t=>t.type==='buy'&&t.usd>=JACKPOT_MIN_BUY).map(t=>{
+    const tier=jackpotRoll(t.hash);
+    if(!tier)return null;
+    const taxPaid=t.usd*TAX_RATE;
+    const refund=taxPaid*tier.pct;
+    return {...t,taxPaid,refund,tierPct:tier.pct,className:tier.className};
+  }).filter(Boolean).sort((a,b)=>b.ts-a.ts);
+}
+
+function renderJackpots(){
+  const jb=$('jackpotBody');
+  $('jackpotCount').textContent=fN(jackpots.length);
+  if(!jackpots.length){
+    jb.innerHTML='<div class="jw-row h"><span>Refund</span><span>Wallet</span><span>Buy</span><span>Tax Back</span><span>Time</span></div><div class="tbe">No jackpot wins yet. Eligible buys are rolling live.</div>';
+    return;
+  }
+  jb.innerHTML='<div class="jw-row h"><span>Refund</span><span>Wallet</span><span>Buy</span><span>Tax Back</span><span>Time</span></div>';
+  jackpots.slice(0,30).forEach(win=>{
+    const row=document.createElement('div');
+    row.className='jw-row';
+    const pct=Math.round(win.tierPct*100);
+    row.innerHTML='<span class="jtag '+win.className+'">'+pct+'%</span><span class="jmono"><a href="'+EXP+'/address/'+win.trader+'" target="_blank" style="color:inherit;text-decoration:none">'+win.trader+'</a></span><span class="jmono">'+fU(win.usd)+'</span><span class="jmono" style="color:var(--gold)">'+fU(win.refund)+'</span><span class="jmono">'+tA(win.ts)+'</span>';
+    jb.appendChild(row);
+  });
+}
+
 function renderLB(){const tb=$('lbBody');if(!lb.length){tb.innerHTML='<tr><td colspan="7" class="tbe">No traders yet.</td></tr>';$('lbCount').textContent='0';return}
 $('lbCount').textContent=lb.length+' wallets';tb.innerHTML='';
 lb.slice(0,50).forEach((t,i)=>{const r=i+1;const rc=r===1?'rk1':r===2?'rk2':r===3?'rk3':'rkn';
@@ -632,7 +731,12 @@ const items=[{l:'CTR',v:'$'+p.toFixed(6),c:'var(--gold)'},{l:'24h',v:(ch>=0?'+':
 $('ticker').innerHTML=[...items,...items].map((it,i)=>(i?'<div class="tsep"></div>':'')+'<div class="ti"><span class="tl">'+it.l+'</span><span class="tv" style="color:'+it.c+'">'+it.v+'</span></div>').join('')}
 
 updCD();setInterval(updCD,1e3);updTicker(0,0,0,0,0,0);
-async function init(){log('Init CTR Trading Season...');await fetchDex();await fetchTx()}
+async function init(){
+  $('jHow').innerHTML='<strong>How it works:</strong> only <strong>BUY</strong> trades with value <strong>≥ $'+JACKPOT_MIN_BUY+'</strong> can trigger. Your transaction hash determines a deterministic jackpot roll (same tx = same result). Winners get <strong>10%–100%</strong> of their paid taxes back.';
+  log('Init CTR Trading Season...');
+  await fetchDex();
+  await fetchTx();
+}
 init();setInterval(async()=>{await fetchDex();await fetchTx()},3e4);
 </script>
 </body>
