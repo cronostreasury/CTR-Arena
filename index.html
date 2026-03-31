@@ -406,6 +406,7 @@ const JACKPOT_TIERS=[
   {pct:0.10,weight:120,className:'p10'}
 ];
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
+const SS_TS=SS.getTime()/1e3; // unix seconds
 const JACKPOT_TOTAL_WEIGHT=JACKPOT_TIERS.reduce((s,t)=>s+t.weight,0);
 const TRANSFER_TOPIC='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 const LP_PADDED='0x'+LP.slice(2).toLowerCase().padStart(64,'0');
@@ -561,23 +562,42 @@ async function getTxSender(hash){
 }
 
 async function buildTrades(){
-  const lp=LP.toLowerCase();const ss=SS.getTime()/1e3;const grouped=new Map();
+  const lp=LP.toLowerCase();
+  const ss=SS_TS;
+  const grouped=new Map();
+  let skippedTime=0,skippedLp=0;
+
+  // Debug: log structure and time range
+  if(txs.length>0){
+    const s=txs[0],e=txs[txs.length-1];
+    log('TX[0]: from='+s.from+' to='+s.to+' ts='+s.timeStamp+' val='+s.value);
+    log('TX last: ts='+e.timeStamp+' | SS_TS='+Math.round(SS_TS)+' | now='+Math.round(Date.now()/1e3));
+    log('LP lower: '+lp);
+  }
+
   txs.forEach((tx,i)=>{
-    const f=(tx.from||'').toLowerCase(),t=(tx.to||'').toLowerCase();
-    const ts=parseInt(tx.timeStamp||'0');if(!ts||ts<ss)return;
-    const isBuy=f===lp,isSell=t===lp;if(!isBuy&&!isSell)return;
+    const f=(tx.from||'').toLowerCase();
+    const t=(tx.to||'').toLowerCase();
+    const ts=parseInt(tx.timeStamp||'0');
+    if(!ts||ts<ss){skippedTime++;return;}
+    const isBuy=f===lp;
+    const isSell=t===lp;
+    if(!isBuy&&!isSell){skippedLp++;return;}
     const counterpart=isBuy?t:f;
     const hash=(tx.hash||tx.transactionHash||('nohash-'+i)).toLowerCase();
     const key=hash+':'+(isBuy?'buy':'sell');
-    const val=parseFloat(tx.value||'0')/Math.pow(10,DEC);
+    let val=0;
+    try{val=Number(BigInt(tx.value||'0'))/Math.pow(10,DEC);}catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
     if(!grouped.has(key))grouped.set(key,{hash,ts,type:isBuy?'buy':'sell',counterparts:new Set(),ctr:0});
     const g=grouped.get(key);g.ts=Math.max(g.ts,ts);g.counterparts.add(counterpart);g.ctr+=val;
   });
+
+  log('Skipped: '+skippedTime+' (before season), '+skippedLp+' (not LP). Grouped: '+grouped.size);
   const raw=[...grouped.values()].sort((a,b)=>b.ts-a.ts);const out=[];
   log('Resolving traders for '+raw.length+' swaps...');
   for(const g of raw){
     let trader=null;
-    for(const c of g.counterparts){if(!c||EX.has(c))continue;if(!(await isContract(c))){trader=c;break}}
+    for(const c of g.counterparts){if(!c||EX.has(c))continue;if(!(await isContract(c))){trader=c;break;}}
     if(!trader&&g.hash&&!g.hash.startsWith('nohash-')){
       const sender=await getTxSender(g.hash);
       if(sender&&!EX.has(sender)&&!(await isContract(sender)))trader=sender;
