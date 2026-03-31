@@ -435,30 +435,74 @@ async function rpcCall(method,params){
 
 function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
 
-// === CORE: FETCH TRADES VIA CRONOS RPC eth_getLogs (no CORS issues) ===
+// === CORE: FETCH TRADES — Chunked RPC (max 2000 blocks) + Explorer fallback ===
+const CHUNK=1800; // stay under Cronos 2000-block limit
+
+async function fetchLogsChunked(filter,fromBlock,toBlock){
+  const allLogs=[];
+  let cur=fromBlock;
+  while(cur<=toBlock){
+    const end=Math.min(cur+CHUNK-1,toBlock);
+    const f='0x'+cur.toString(16);
+    const t='0x'+end.toString(16);
+    try{
+      const chunk=await rpcCall('eth_getLogs',[{...filter,fromBlock:f,toBlock:t}]);
+      if(Array.isArray(chunk))allLogs.push(...chunk);
+    }catch(e){
+      // if a single chunk still fails, skip it and continue
+      log('Chunk '+cur+'-'+end+' err: '+e.message.slice(0,60));
+    }
+    cur=end+1;
+    // small yield so browser doesn't freeze on many chunks
+    await new Promise(r=>setTimeout(r,0));
+  }
+  return allLogs;
+}
+
 async function fetchTx(){
+  // --- PRIMARY: Blockscout Explorer API (fastest, no block-range limit) ---
   try{
-    log('Fetching via Cronos RPC eth_getLogs...');
+    log('Blockscout...');
+    const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=2000&sort=desc';
+    const r=await fetchJson('https://cronos.org/explorer/api'+q,{},20000);
+    if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
+      log('Blockscout OK — '+r.result.length+' txs');
+      setSt('LIVE · Blockscout',1);
+      txs=r.result;
+      await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();
+      return;
+    }
+    log('Blockscout empty/bad status — trying RPC...');
+  }catch(e){
+    log('Blockscout fail: '+e.message+' — trying RPC...');
+  }
+
+  // --- SECONDARY: Chunked eth_getLogs via Cronos RPC ---
+  try{
+    log('Fetching via Cronos RPC eth_getLogs (chunked)...');
     const latestHex=await rpcCall('eth_blockNumber',[]);
     const latestBlock=parseInt(latestHex,16);
     log('Latest block: '+latestBlock);
 
-    // ~200k blocks = ~13 days on Cronos (5.6s/block). Covers full season so far.
-    const RANGE=200000;
-    const fromBlock='0x'+Math.max(1,latestBlock-RANGE).toString(16);
+    // Season start block estimate: SS timestamp → approximate block
+    // Cronos ~5.6s/block. Season start 2026-03-20, so blocks back from now:
+    const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS.getTime()/1000);
+    const blocksBack=Math.min(Math.ceil(secsFromSS/5.6)+500, 200000);
+    const fromBlock=Math.max(1,latestBlock-blocksBack);
 
-    // Buys: CTR transferred FROM the LP to a user
-    log('Querying buys...');
-    const buyLogs=await rpcCall('eth_getLogs',[{address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,null],fromBlock,toBlock:'latest'}]);
-    log('Buy logs: '+(buyLogs?buyLogs.length:0));
+    log('Querying '+blocksBack+' blocks in ~'+Math.ceil(blocksBack/CHUNK)+' chunks...');
 
-    // Sells: CTR transferred TO the LP from a user
-    log('Querying sells...');
-    const sellLogs=await rpcCall('eth_getLogs',[{address:CTR,topics:[TRANSFER_TOPIC,null,LP_PADDED],fromBlock,toBlock:'latest'}]);
-    log('Sell logs: '+(sellLogs?sellLogs.length:0));
+    const buyFilter={address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,null]};
+    const sellFilter={address:CTR,topics:[TRANSFER_TOPIC,null,LP_PADDED]};
 
-    const allLogs=[...(buyLogs||[]).map(l=>({...l,_type:'buy'})),...(sellLogs||[]).map(l=>({...l,_type:'sell'}))];
+    const [buyLogs,sellLogs]=await Promise.all([
+      fetchLogsChunked(buyFilter,fromBlock,latestBlock),
+      fetchLogsChunked(sellFilter,fromBlock,latestBlock)
+    ]);
 
+    log('RPC: '+buyLogs.length+' buys, '+sellLogs.length+' sells');
+
+    const allLogs=[...buyLogs.map(l=>({...l,_type:'buy'})),...sellLogs.map(l=>({...l,_type:'sell'}))];
     if(!allLogs.length){
       log('No transfer logs found');setSt('No trades in range',0);
       $('feedBody').innerHTML='<div class="tbe">No CTR trades found. Try refreshing.</div>';
@@ -466,7 +510,6 @@ async function fetchTx(){
       jackpots=[];renderJackpots();return;
     }
 
-    // Convert RPC logs to standard format
     txs=allLogs.map(l=>{
       const from='0x'+l.topics[1].slice(26).toLowerCase();
       const to='0x'+l.topics[2].slice(26).toLowerCase();
@@ -476,21 +519,29 @@ async function fetchTx(){
       return{hash:l.transactionHash,from,to,value:String(Number(BigInt(l.data||'0x0'))),timeStamp:String(ts)};
     });
     txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
-
     setSt('LIVE · Cronos RPC',1);
-    log('Total: '+txs.length+' transfers ('+buyLogs.length+' buys, '+sellLogs.length+' sells)');
-
     await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();
 
   }catch(e){
-    log('RPC error: '+e.message+' — trying Explorer fallback...');
-    // Fallback to explorer APIs (may fail due to CORS but worth trying)
-    let data=null;
-    const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
-    const srcs=[{n:'Blockscout',u:'https://cronos.org/explorer/api'+q},{n:'CronosScan',u:'https://api.cronoscan.com/api'+q}];
-    for(const s of srcs){try{log(s.n+'...');const r=await fetchJson(s.u);if(r?.status==='1'&&r.result?.length){data=r;setSt('LIVE · '+s.n,1);log(s.n+' OK');break}}catch(ex){log(s.n+' fail: '+ex.message)}}
-    if(!data?.result?.length){setSt('No data — retry 30s',0);$('feedBody').innerHTML='<div class="tbe">Could not fetch. Auto-retry 30s.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';jackpots=[];renderJackpots();return}
-    txs=data.result;await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();
+    log('RPC error: '+e.message+' — trying CronosScan...');
+
+    // --- TERTIARY: CronosScan ---
+    try{
+      const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
+      const r=await fetchJson('https://api.cronoscan.com/api'+q,{},20000);
+      if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
+        log('CronosScan OK — '+r.result.length+' txs');
+        setSt('LIVE · CronosScan',1);
+        txs=r.result;
+        await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();
+        return;
+      }
+    }catch(ex){log('CronosScan fail: '+ex.message)}
+
+    setSt('No data — retry 30s',0);
+    $('feedBody').innerHTML='<div class="tbe">Could not fetch. Auto-retry 30s.</div>';
+    $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';
+    jackpots=[];renderJackpots();
   }
 }
 
@@ -593,12 +644,14 @@ if(!trader){
     // Use RPC eth_getLogs for this specific wallet too
     const latestHex=await rpcCall('eth_blockNumber',[]);
     const latestBlock=parseInt(latestHex,16);
-    const fromBlock='0x'+Math.max(1,latestBlock-200000).toString(16);
+    const secsFromSS2=Math.max(0,Math.floor(Date.now()/1000)-SS.getTime()/1000);
+    const blocksBack2=Math.min(Math.ceil(secsFromSS2/5.6)+500,200000);
+    const fromBlockNum=Math.max(1,latestBlock-blocksBack2);
     const walletPadded='0x'+inp.slice(2).padStart(64,'0');
-    // Buys: LP -> wallet
-    const buys=await rpcCall('eth_getLogs',[{address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,walletPadded],fromBlock,toBlock:'latest'}]);
-    // Sells: wallet -> LP
-    const sells=await rpcCall('eth_getLogs',[{address:CTR,topics:[TRANSFER_TOPIC,walletPadded,LP_PADDED],fromBlock,toBlock:'latest'}]);
+    // Buys: LP -> wallet (chunked)
+    const buys=await fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,walletPadded]},fromBlockNum,latestBlock);
+    // Sells: wallet -> LP (chunked)
+    const sells=await fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,walletPadded,LP_PADDED]},fromBlockNum,latestBlock);
     const ss=SS.getTime()/1e3;let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0,n=0;
     (buys||[]).forEach(l=>{const blockNum=parseInt(l.blockNumber,16);const ts=Math.floor(Date.now()/1000-(latestBlock-blockNum)*5.6);
       if(ts<ss)return;const val=Number(BigInt(l.data||'0x0'))/Math.pow(10,DEC);const usd=val*price;bV+=usd;bC+=val;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)});
