@@ -572,10 +572,8 @@ async function _fetchTx(){
     if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
       log('Blockscout OK - '+r.result.length+' raw transfers');
       setSt('LIVE · Blockscout',1);
-      // Pass all season transfers - buildTradesDirect groups by txHash and
-      // identifies buy/sell by which transfers involve the LP address
       const filtered=r.result.filter(tx=>parseInt(tx.timeStamp||'0')>=SS_TS);
-      log('Season transfers: '+filtered.length);
+      log('Season transfers (all): '+filtered.length);
       buildTradesDirect(filtered,lp);
       await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
       return;
@@ -658,52 +656,64 @@ async function _fetchTx(){
 }
 
 // Build trades from Blockscout tokentx response.
-// Blockscout tokentx: for each Transfer event in a swap tx:
-//   tx.from = actual transaction sender (the REAL user/trader)
-//   tx.to   = token recipient of THIS specific Transfer event
-// Strategy: group all transfers per txHash, determine buy/sell from which
-// side involves the LP, then use tx.from as the trader (tx initiator).
+// Blockscout tokentx returns one row per ERC20 Transfer event.
+// For a DEX swap, there are typically 2-3 Transfer events per tx:
+//   - WCRO -> LP (user sends WCRO to pool)
+//   - LP -> User (pool sends CTR to user) <-- this is the one we want for buys
+//   - sometimes router intermediate transfers
+//
+// Key insight: filter to only the Transfer event that directly involves LP,
+// use the OPPOSITE address as the trader:
+//   - Buy:  from=LP, to=User  → trader = to
+//   - Sell: from=User, to=LP  → trader = from
+// Then deduplicate by txHash+type to collapse multi-transfer swaps.
 function buildTradesDirect(txList, lp){
-  // Group transfers by txHash
-  const byHash=new Map();
-  txList.forEach((tx,i)=>{
-    const hash=(tx.hash||tx.transactionHash||('nohash'+i)).toLowerCase();
-    if(!byHash.has(hash))byHash.set(hash,[]);
-    byHash.get(hash).push(tx);
-  });
+  // Log first raw record for debugging
+  if(txList.length>0){
+    const s=txList[0];
+    log('RAW[0]: hash='+((s.hash||s.transactionHash||'?').slice(0,16))+'... from='+((s.from||'?').slice(0,10))+'... to='+((s.to||'?').slice(0,10))+'... val='+s.value+' ts='+s.timeStamp);
+    log('RAW[0] keys: '+Object.keys(s).join(','));
+  }
 
+  // Only keep transfers that directly touch the LP
+  const lpTransfers=txList.filter(tx=>{
+    const f=(tx.from||'').toLowerCase();
+    const t=(tx.to||'').toLowerCase();
+    return f===lp||t===lp;
+  });
+  log('LP-direct transfers: '+lpTransfers.length+' of '+txList.length);
+
+  // Deduplicate: one entry per txHash+type
+  // For each txHash we may see LP->User (buy) AND User->LP (sell) if it's a
+  // complex tx - we keep whichever is the primary swap direction
   const deduped=new Map();
-  byHash.forEach((txs,hash)=>{
-    // Determine type: does any transfer go FROM LP (buy) or TO LP (sell)?
-    let isBuy=false,isSell=false,totalCtr=0;
-    let ts=0;
-    txs.forEach(tx=>{
-      const f=(tx.from||'').toLowerCase();
-      const t=(tx.to||'').toLowerCase();
-      if(f===lp)isBuy=true;
-      if(t===lp)isSell=true;
-      ts=Math.max(ts,parseInt(tx.timeStamp||'0'));
-      // Sum CTR value from transfers involving LP
-      if(f===lp||t===lp){
-        let val=0;
-        try{val=Number(BigInt(tx.value||tx.tokenValue||'0'))/Math.pow(10,DEC);}
-        catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
-        totalCtr+=val;
-      }
-    });
-    // tx.from on any row = the actual transaction initiator (the trader)
-    const trader=(txs[0].from||'').toLowerCase();
+  lpTransfers.forEach((tx,i)=>{
+    const f=(tx.from||'').toLowerCase();
+    const t=(tx.to||'').toLowerCase();
+    const isBuy=f===lp;
+    const isSell=t===lp;
+    const trader=isBuy?t:f;
     if(!trader||EX.has(trader)||NON_USER_ADDRS.has(trader))return;
-    // If both buy+sell flags set on same tx (e.g. router internal hops), treat as buy
-    // (LP sent tokens OUT = user received = buy)
+    const ts=parseInt(tx.timeStamp||'0');
+    const hash=(tx.hash||tx.transactionHash||('nohash'+i)).toLowerCase();
     const type=isBuy?'buy':'sell';
-    if(!isBuy&&!isSell)return;
-    if(totalCtr<=0)return;
     const key=hash+':'+type;
-    if(!deduped.has(key))deduped.set(key,{hash,ts,type,trader,ctr:totalCtr,usd:totalCtr*price});
+    let val=0;
+    try{val=Number(BigInt(tx.value||tx.tokenValue||'0'))/Math.pow(10,DEC);}
+    catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
+    if(val<=0)return;
+    if(!deduped.has(key)){
+      deduped.set(key,{hash,ts,type,trader,ctr:val,usd:val*price});
+    } else {
+      // Same tx, same type — add CTR amounts (e.g. two LP transfers in one tx)
+      const e=deduped.get(key);
+      e.ctr+=val;e.usd+=val*price;
+      // Use the latest trader address (in case first was a router)
+      if(!EX.has(trader))e.trader=trader;
+    }
   });
   trades=[...deduped.values()].sort((a,b)=>b.ts-a.ts);
-  log('buildTradesDirect: '+trades.length+' trades from '+byHash.size+' unique txs ('+txList.length+' raw transfers)');
+  log('buildTradesDirect: '+trades.length+' trades from '+deduped.size+' unique txHash+type ('+lpTransfers.length+' LP transfers, '+txList.length+' total raw)');
 }
 
 async function fetchDex(){try{const r=await fetch('https://api.dexscreener.com/latest/dex/pairs/cronos/'+LP);const d=await r.json();const p=d.pair;if(!p)return;
