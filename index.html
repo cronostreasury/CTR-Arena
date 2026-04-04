@@ -506,18 +506,6 @@ const EX=new Set([CTR,'0x96A6cd06338eFE754f200Aba9fF07788c16E5F20','0x0000000000
 '0xcd7d16fB918511BF7269eC4f48d61D79Fb26f918','0x145677FC4d9b8F19B5D56d1820c48e0443049a30',
 LP].map(a=>a.toLowerCase()));
 const NON_USER_ADDRS=new Set(['0xec68090566397dcc37e54b30cc264b2d68cf0489']);
-const contractCache={};
-async function isContract(addr){
-  const a=addr.toLowerCase();
-  if(EX.has(a)||NON_USER_ADDRS.has(a))return true;
-  if(contractCache[a]!==undefined)return contractCache[a];
-  try{
-    const res=await fetchJson(RPC,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({jsonrpc:'2.0',method:'eth_getCode',params:[a,'latest'],id:1})});
-    const isC=res.result&&res.result!=='0x'&&res.result!=='0x0'&&res.result.length>4;
-    contractCache[a]=!!isC;return contractCache[a];
-  }catch(e){contractCache[a]=true;return true}
-}
 const EXP='https://explorer.cronos.org',DEC=18,SD=30,TAX_RATE=0.10,JACKPOT_MIN_BUY=10;
 const JACKPOT_TIERS=[
   {pct:1.00,weight:2,className:'p100'},
@@ -533,6 +521,7 @@ const TRANSFER_TOPIC='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4d
 const LP_PADDED='0x'+LP.slice(2).toLowerCase().padStart(64,'0');
 
 let price=0,txs=[],trades=[],tm={},lb=[],jackpots=[];
+let fetchInProgress=false;
 const dbg=document.getElementById('debugLog');
 function log(m){console.log('[CTR]',m);dbg.style.display='block';dbg.innerHTML+=new Date().toLocaleTimeString()+' - '+m+'<br>';dbg.scrollTop=dbg.scrollHeight}
 function fU(n){if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)}
@@ -567,42 +556,137 @@ async function fetchLogsChunked(filter,fromBlock,toBlock){
 }
 
 async function fetchTx(){
+  if(fetchInProgress){log('Fetch already running, skip');return;}
+  fetchInProgress=true;
+  try{await _fetchTx();}finally{fetchInProgress=false;}
+}
+
+async function _fetchTx(){
+  const lp=LP.toLowerCase();
+
+  // --- PRIMARY: Blockscout Explorer API ---
   try{
     log('Blockscout...');
     const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=2000&sort=desc';
     const r=await fetchJson('https://cronos.org/explorer/api'+q,{},20000);
     if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-      log('Blockscout OK - '+r.result.length+' txs');setSt('LIVE · Blockscout',1);txs=r.result;
-      await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();return;
+      log('Blockscout OK - '+r.result.length+' raw transfers');
+      setSt('LIVE · Blockscout',1);
+      // Blockscout tokentx: each row has from/to = actual sender/recipient
+      // A buy = LP sent tokens TO a user (from=LP, to=user)
+      // A sell = user sent tokens TO LP (from=user, to=LP)
+      const filtered=r.result.filter(tx=>{
+        const ts=parseInt(tx.timeStamp||'0');
+        if(ts<SS_TS)return false;
+        const f=(tx.from||'').toLowerCase();
+        const t=(tx.to||'').toLowerCase();
+        return f===lp||t===lp;
+      });
+      log('Season txs after filter: '+filtered.length);
+      buildTradesDirect(filtered,lp);
+      await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
+      return;
     }
     log('Blockscout empty - trying RPC...');
-  }catch(e){log('Blockscout fail: '+e.message+' - trying RPC...');}
+  }catch(e){log('Blockscout fail: '+e.message);}
+
+  // --- SECONDARY: Chunked eth_getLogs ---
   try{
-    log('Fetching via Cronos RPC eth_getLogs (chunked)...');
+    log('Cronos RPC eth_getLogs...');
     const latestHex=await rpcCall('eth_blockNumber',[]);const latestBlock=parseInt(latestHex,16);
-    log('Latest block: '+latestBlock);
-    const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS.getTime()/1000);
+    const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS_TS);
     const blocksBack=Math.min(Math.ceil(secsFromSS/5.6)+500,200000);
     const fromBlock=Math.max(1,latestBlock-blocksBack);
-    log('Querying '+blocksBack+' blocks...');
+    log('Querying '+blocksBack+' blocks (~'+Math.ceil(blocksBack/CHUNK)+' chunks)...');
     const buyFilter={address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,null]};
     const sellFilter={address:CTR,topics:[TRANSFER_TOPIC,null,LP_PADDED]};
-    const [buyLogs,sellLogs]=await Promise.all([fetchLogsChunked(buyFilter,fromBlock,latestBlock),fetchLogsChunked(sellFilter,fromBlock,latestBlock)]);
-    log('RPC: '+buyLogs.length+' buys, '+sellLogs.length+' sells');
-    const allLogs=[...buyLogs.map(l=>({...l,_type:'buy'})),...sellLogs.map(l=>({...l,_type:'sell'}))];
-    if(!allLogs.length){log('No transfer logs found');setSt('No trades in range',0);$('feedBody').innerHTML='<div class="tbe">No CTR trades found. Try refreshing.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data</td></tr>';jackpots=[];renderJackpots();return;}
-    txs=allLogs.map(l=>{const from='0x'+l.topics[1].slice(26).toLowerCase();const to='0x'+l.topics[2].slice(26).toLowerCase();const blockNum=parseInt(l.blockNumber,16);const secsAgo=(latestBlock-blockNum)*5.6;const ts=Math.floor(Date.now()/1000-secsAgo);return{hash:l.transactionHash,from,to,value:String(Number(BigInt(l.data||'0x0'))),timeStamp:String(ts)};});
-    txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
+    const [buyLogs,sellLogs]=await Promise.all([
+      fetchLogsChunked(buyFilter,fromBlock,latestBlock),
+      fetchLogsChunked(sellFilter,fromBlock,latestBlock)
+    ]);
+    log('RPC: '+buyLogs.length+' buy logs, '+sellLogs.length+' sell logs');
+    if(!buyLogs.length&&!sellLogs.length){
+      setSt('No trades found',0);
+      $('feedBody').innerHTML='<div class="tbe">No CTR trades since season start. Try refreshing.</div>';
+      $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data yet</td></tr>';
+      jackpots=[];renderJackpots();return;
+    }
+    // Build normalized tx list from logs - trader is the non-LP address in topics
+    const normalized=[];
+    buyLogs.forEach(l=>{
+      const to='0x'+l.topics[2].slice(26).toLowerCase();
+      if(EX.has(to)||NON_USER_ADDRS.has(to))return;
+      const blockNum=parseInt(l.blockNumber,16);
+      const ts=Math.floor(Date.now()/1000-(latestBlock-blockNum)*5.6);
+      if(ts<SS_TS)return;
+      let val=0;try{val=Number(BigInt(l.data||'0x0'))/Math.pow(10,DEC);}catch(e){}
+      normalized.push({hash:(l.transactionHash||'').toLowerCase(),ts,type:'buy',trader:to,ctr:val,usd:val*price});
+    });
+    sellLogs.forEach(l=>{
+      const from='0x'+l.topics[1].slice(26).toLowerCase();
+      if(EX.has(from)||NON_USER_ADDRS.has(from))return;
+      const blockNum=parseInt(l.blockNumber,16);
+      const ts=Math.floor(Date.now()/1000-(latestBlock-blockNum)*5.6);
+      if(ts<SS_TS)return;
+      let val=0;try{val=Number(BigInt(l.data||'0x0'))/Math.pow(10,DEC);}catch(e){}
+      normalized.push({hash:(l.transactionHash||'').toLowerCase(),ts,type:'sell',trader:from,ctr:val,usd:val*price});
+    });
+    // Deduplicate by hash+type (multiple Transfer events per tx possible)
+    const deduped=new Map();
+    normalized.forEach(t=>{
+      const key=t.hash+':'+t.type+':'+t.trader;
+      if(!deduped.has(key))deduped.set(key,{...t});
+      else{const e=deduped.get(key);e.ctr+=t.ctr;e.usd+=t.usd;}
+    });
+    trades=[...deduped.values()].sort((a,b)=>b.ts-a.ts);
+    log('Built '+trades.length+' trades from RPC logs');
     setSt('LIVE · Cronos RPC',1);
-    await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
-  }catch(e){
-    log('RPC error: '+e.message+' - trying CronosScan...');
-    try{const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
+    await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
+    return;
+  }catch(e){log('RPC error: '+e.message);}
+
+  // --- TERTIARY: CronosScan ---
+  try{
+    const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
     const r=await fetchJson('https://api.cronoscan.com/api'+q,{},20000);
-    if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){log('CronosScan OK - '+r.result.length+' txs');setSt('LIVE · CronosScan',1);txs=r.result;
-    await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();return;}}catch(ex){log('CronosScan fail: '+ex.message)}
-    setSt('No data - retry 30s',0);$('feedBody').innerHTML='<div class="tbe">Could not fetch. Auto-retry 30s.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';jackpots=[];renderJackpots();
-  }
+    if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
+      log('CronosScan OK - '+r.result.length+' txs');setSt('LIVE · CronosScan',1);
+      const filtered=r.result.filter(tx=>parseInt(tx.timeStamp||'0')>=SS_TS&&((tx.from||'').toLowerCase()===lp||(tx.to||'').toLowerCase()===lp));
+      buildTradesDirect(filtered,lp);
+      await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
+      return;
+    }
+  }catch(ex){log('CronosScan fail: '+ex.message);}
+
+  setSt('No data - retry 30s',0);
+  $('feedBody').innerHTML='<div class="tbe">Could not fetch trades. Auto-retry in 30s.</div>';
+  $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';
+  jackpots=[];renderJackpots();
+}
+
+// Build trades directly from Explorer API response (no isContract needed)
+// Explorer gives us actual sender/recipient, not intermediate router hops
+function buildTradesDirect(txList,lp){
+  const deduped=new Map();
+  txList.forEach((tx,i)=>{
+    const f=(tx.from||'').toLowerCase();
+    const t=(tx.to||'').toLowerCase();
+    const isBuy=f===lp;  // LP -> user = buy
+    const isSell=t===lp; // user -> LP = sell
+    if(!isBuy&&!isSell)return;
+    const trader=isBuy?t:f;
+    if(!trader||EX.has(trader)||NON_USER_ADDRS.has(trader))return;
+    const ts=parseInt(tx.timeStamp||'0');
+    const hash=(tx.hash||tx.transactionHash||('nohash'+i)).toLowerCase();
+    const key=hash+':'+(isBuy?'buy':'sell')+':'+trader;
+    let val=0;
+    try{val=Number(BigInt(tx.value||tx.tokenValue||'0'))/Math.pow(10,DEC);}
+    catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
+    if(!deduped.has(key))deduped.set(key,{hash,ts,type:isBuy?'buy':'sell',trader,ctr:0,usd:0});
+    const e=deduped.get(key);e.ctr+=val;e.usd+=val*price;
+  });
+  trades=[...deduped.values()].sort((a,b)=>b.ts-a.ts);
+  log('buildTradesDirect: '+trades.length+' trades from '+txList.length+' raw');
 }
 
 async function fetchDex(){try{const r=await fetch('https://api.dexscreener.com/latest/dex/pairs/cronos/'+LP);const d=await r.json();const p=d.pair;if(!p)return;
@@ -612,23 +696,7 @@ $('sPriceChange').textContent=(ch>=0?'+':'')+ch.toFixed(2)+'% (24h)';$('sPriceCh
 $('sVolume').textContent=fU(vol);$('sVolume').classList.remove('ld');$('sLiquidity').textContent=fU(liq);$('sLiquidity').classList.remove('ld');
 updTicker(price,ch,vol,liq,buys,sells);log('Dex OK - $'+price.toFixed(6))}catch(e){log('Dex ERR: '+e.message)}}
 
-const txSenderCache={};const balanceCache={};
-async function getTxSender(hash){const h=(hash||'').toLowerCase();if(!h)return null;if(txSenderCache[h]!==undefined)return txSenderCache[h];
-try{const res=await fetchJson(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'eth_getTransactionByHash',params:[h],id:1})});
-const from=res?.result?.from?.toLowerCase()||null;txSenderCache[h]=from;return from}catch(e){txSenderCache[h]=null;return null}}
-
-async function buildTrades(){
-  const lp=LP.toLowerCase();const ss=SS_TS;const grouped=new Map();let skippedTime=0,skippedLp=0;
-  if(txs.length>0){const s=txs[0],e=txs[txs.length-1];log('TX[0]: from='+s.from+' to='+s.to+' ts='+s.timeStamp);log('TX last: ts='+e.timeStamp+' | SS_TS='+Math.round(SS_TS)+' | now='+Math.round(Date.now()/1e3));}
-  txs.forEach((tx,i)=>{const f=(tx.from||'').toLowerCase();const t=(tx.to||'').toLowerCase();const ts=parseInt(tx.timeStamp||'0');if(!ts||ts<ss){skippedTime++;return;}const isBuy=f===lp;const isSell=t===lp;if(!isBuy&&!isSell){skippedLp++;return;}const counterpart=isBuy?t:f;const hash=(tx.hash||tx.transactionHash||('nohash-'+i)).toLowerCase();const key=hash+':'+(isBuy?'buy':'sell');let val=0;try{val=Number(BigInt(tx.value||'0'))/Math.pow(10,DEC);}catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}if(!grouped.has(key))grouped.set(key,{hash,ts,type:isBuy?'buy':'sell',counterparts:new Set(),ctr:0});const g=grouped.get(key);g.ts=Math.max(g.ts,ts);g.counterparts.add(counterpart);g.ctr+=val;});
-  log('Skipped: '+skippedTime+' (before season), '+skippedLp+' (not LP). Grouped: '+grouped.size);
-  const raw=[...grouped.values()].sort((a,b)=>b.ts-a.ts);const out=[];
-  log('Resolving traders for '+raw.length+' swaps...');
-  for(const g of raw){let trader=null;for(const c of g.counterparts){if(!c||EX.has(c))continue;if(!(await isContract(c))){trader=c;break;}}
-  if(!trader&&g.hash&&!g.hash.startsWith('nohash-')){const sender=await getTxSender(g.hash);if(sender&&!EX.has(sender)&&!(await isContract(sender)))trader=sender;}
-  if(!trader||NON_USER_ADDRS.has(trader))continue;out.push({hash:g.hash,ts:g.ts,type:g.type,trader,ctr:g.ctr,usd:g.ctr*price});}
-  trades=out;log('Built '+trades.length+' deduplicated trades');
-}
+const balanceCache={};
 
 async function getCtrBalance(addr){const a=(addr||'').toLowerCase();if(!a)return 0;if(balanceCache[a]!==undefined)return balanceCache[a];
 try{const data='0x70a08231000000000000000000000000'+a.slice(2);const res=await fetchJson(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:CTR,data},'latest'],id:1})});
@@ -724,34 +792,61 @@ $('claimModal').addEventListener('click',function(e){if(e.target===this)closeCla
 $('claimWalletInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkClaims()});
 
 async function lookupWallet(){
-const inp=$('walletInput').value.trim().toLowerCase();
-if(!inp||!inp.startsWith('0x')||inp.length!==42){alert('Enter valid 42-char wallet');return}
-$('dashResult').style.display='block';$('dRank').textContent='...';$('dScore').textContent='...';$('dAntiWash').textContent='...';$('dBonus').textContent='...';
-let trader=tm[inp];
-if(!trader){
-  log('Wallet not cached, fetching via RPC...');
-  try{
-    const latestHex=await rpcCall('eth_blockNumber',[]);const latestBlock=parseInt(latestHex,16);
-    const secsFromSS2=Math.max(0,Math.floor(Date.now()/1000)-SS.getTime()/1000);
-    const blocksBack2=Math.min(Math.ceil(secsFromSS2/5.6)+500,200000);
-    const fromBlockNum=Math.max(1,latestBlock-blocksBack2);
-    const walletPadded='0x'+inp.slice(2).padStart(64,'0');
-    const buys=await fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,walletPadded]},fromBlockNum,latestBlock);
-    const sells=await fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,walletPadded,LP_PADDED]},fromBlockNum,latestBlock);
-    const ss=SS.getTime()/1e3;let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0,n=0;
-    (buys||[]).forEach(l=>{const blockNum=parseInt(l.blockNumber,16);const ts=Math.floor(Date.now()/1000-(latestBlock-blockNum)*5.6);if(ts<ss)return;const val=Number(BigInt(l.data||'0x0'))/Math.pow(10,DEC);const usd=val*price;bV+=usd;bC+=val;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)});
-    (sells||[]).forEach(l=>{const blockNum=parseInt(l.blockNumber,16);const ts=Math.floor(Date.now()/1000-(latestBlock-blockNum)*5.6);if(ts<ss)return;const val=Number(BigInt(l.data||'0x0'))/Math.pow(10,DEC);const usd=val*price;sV+=usd;sC+=val;n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts)});
-    if(n>0){const balC=await getCtrBalance(inp);const raw=(3*bV)+(1*sV);const awBase=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-ft,sl)/sl)*.5;const fs=raw*aw*hb;trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n,awBase,holdRatio,aw,hb,fs};log('Found '+n+' trades, score: '+Math.round(fs));}else{log('No season trades for this wallet')}
-  }catch(e){log('Wallet lookup error: '+e.message)}
+  const inp=$('walletInput').value.trim().toLowerCase();
+  if(!inp||!inp.startsWith('0x')||inp.length!==42){alert('Enter valid 42-char wallet');return}
+  $('dashResult').style.display='block';$('dRank').textContent='...';$('dScore').textContent='...';$('dAntiWash').textContent='...';$('dBonus').textContent='...';
+  // First check the already-built leaderboard
+  let trader=tm[inp];
+  if(!trader){
+    // Try to build from already-fetched trades
+    const walletTrades=trades.filter(t=>t.trader===inp);
+    if(walletTrades.length>0){
+      let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0;
+      walletTrades.forEach(t=>{lt=Math.max(lt,t.ts);ft=Math.min(ft,t.ts);if(t.type==='buy'){bV+=t.usd;bC+=t.ctr}else{sV+=t.usd;sC+=t.ctr}});
+      const balC=await getCtrBalance(inp);
+      const raw=(3*bV)+(1*sV);const awBase=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
+      const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;
+      const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-ft,sl)/sl)*.5;
+      trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n:walletTrades.length,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
+      log('Built from cached trades: score '+Math.round(trader.fs));
+    } else {
+      // Fetch from Blockscout for this specific wallet
+      log('Fetching wallet from Blockscout...');
+      try{
+        const q='?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=500&sort=desc';
+        const r=await fetchJson('https://cronos.org/explorer/api'+q,{},20000);
+        if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
+          const lp=LP.toLowerCase();
+          let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0,n=0;
+          r.result.forEach(tx=>{
+            const ts=parseInt(tx.timeStamp||'0');if(ts<SS_TS)return;
+            const f=(tx.from||'').toLowerCase();const t=(tx.to||'').toLowerCase();
+            const isBuy=f===lp&&t===inp;const isSell=f===inp&&t===lp;
+            if(!isBuy&&!isSell)return;
+            let val=0;try{val=Number(BigInt(tx.value||'0'))/Math.pow(10,DEC);}catch(e){val=0;}
+            const usd=val*price;lt=Math.max(lt,ts);ft=Math.min(ft,ts);n++;
+            if(isBuy){bV+=usd;bC+=val}else{sV+=usd;sC+=val}
+          });
+          if(n>0){
+            const balC=await getCtrBalance(inp);
+            const raw=(3*bV)+(1*sV);const awBase=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
+            const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;
+            const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-ft,sl)/sl)*.5;
+            trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
+            log('Blockscout wallet lookup: '+n+' trades, score '+Math.round(trader.fs));
+          }else{log('No CTR trades this season for this wallet');}
+        }
+      }catch(e){log('Wallet lookup err: '+e.message);}
+    }
+  }
+  if(!trader||!trader.bV){$('dRank').textContent='N/A';$('dScore').textContent='0';$('dAntiWash').textContent='N/A';$('dBonus').textContent='N/A';$('dpLabel').textContent='No trades this season';$('dpPct').textContent='—';$('dpFill').style.width='0%';return}
+  const rank=lb.findIndex(t=>t.addr===inp)+1;
+  $('dRank').textContent=rank>0?'#'+rank:'Unranked';
+  $('dScore').textContent=fN(Math.round(trader.fs||0));$('dAntiWash').textContent=((trader.aw||0)*100).toFixed(0)+'%';$('dBonus').textContent=(trader.hb||1).toFixed(2)+'x';
+  const tiers=[100,500,2e3,1e4,5e4];let cur=0,nxt=tiers[0];const score=trader.fs||0;
+  for(let i=0;i<tiers.length;i++){if(score>=tiers[i]){cur=tiers[i];nxt=tiers[i+1]||tiers[i]*3}else{nxt=tiers[i];break}}
+  const pr=Math.min(100,((score-cur)/(nxt-cur))*100);$('dpLabel').textContent='To '+fN(nxt)+' pts';$('dpPct').textContent=pr.toFixed(0)+'%';$('dpFill').style.width=pr+'%';
 }
-if(!trader||(!trader.fs&&!trader.bV)){$('dRank').textContent='N/A';$('dScore').textContent='0';$('dAntiWash').textContent='N/A';$('dBonus').textContent='N/A';$('dpLabel').textContent='No trades this season';$('dpPct').textContent='—';$('dpFill').style.width='0%';return}
-if(!trader.fs){const raw=(3*trader.bV)+(1*trader.sV);const awBase=trader.bV>0?Math.max(Math.min((trader.bV-trader.sV)/trader.bV,1),0):0;const bC=trader.bC||trader.bV/Math.max(price,1e-12);const balC=trader.balC??await getCtrBalance(inp);const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-trader.ft,sl)/sl)*.5;trader={...trader,bC,balC,raw,awBase,holdRatio,aw,hb,fs:raw*aw*hb}}
-const rank=lb.findIndex(t=>t.addr===inp)+1;const t=trader.fs?trader:lb[rank-1]||trader;
-$('dRank').textContent=rank>0?'#'+rank:(t.fs>0?'Unranked*':'N/A');
-$('dScore').textContent=fN(Math.round(t.fs||0));$('dAntiWash').textContent=((t.aw||0)*100).toFixed(0)+'%';$('dBonus').textContent=(t.hb||1).toFixed(2)+'x';
-const tiers=[100,500,2e3,1e4,5e4];let cur=0,nxt=tiers[0];const score=t.fs||0;
-for(let i=0;i<tiers.length;i++){if(score>=tiers[i]){cur=tiers[i];nxt=tiers[i+1]||tiers[i]*3}else{nxt=tiers[i];break}}
-const pr=Math.min(100,((score-cur)/(nxt-cur))*100);$('dpLabel').textContent='To '+fU(nxt);$('dpPct').textContent=pr.toFixed(0)+'%';$('dpFill').style.width=pr+'%'}
 $('walletInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupWallet()});
 
 function updCD(){const now=new Date();const diff=Math.max(0,SE-now);
