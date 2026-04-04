@@ -505,7 +505,6 @@ const EX=new Set([CTR,'0x96A6cd06338eFE754f200Aba9fF07788c16E5F20','0x0000000000
 '0x145863Eb42Cf62847A6Ca784e6416C1682b1b2Ae','0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
 '0xcd7d16fB918511BF7269eC4f48d61D79Fb26f918','0x145677FC4d9b8F19B5D56d1820c48e0443049a30',
 LP].map(a=>a.toLowerCase()));
-const NON_USER_ADDRS=new Set(['0xec68090566397dcc37e54b30cc264b2d68cf0489']);
 const EXP='https://explorer.cronos.org',DEC=18,SD=30,TAX_RATE=0.10,JACKPOT_MIN_BUY=10;
 const JACKPOT_TIERS=[
   {pct:1.00,weight:2,className:'p100'},
@@ -606,7 +605,7 @@ async function _fetchTx(){
     const normalized=[];
     buyLogs.forEach(l=>{
       const to='0x'+l.topics[2].slice(26).toLowerCase();
-      if(EX.has(to)||NON_USER_ADDRS.has(to))return;
+      if(EX.has(to))return;
       const blockNum=parseInt(l.blockNumber,16);
       const ts=Math.floor(Date.now()/1000-(latestBlock-blockNum)*5.6);
       if(ts<SS_TS)return;
@@ -615,7 +614,7 @@ async function _fetchTx(){
     });
     sellLogs.forEach(l=>{
       const from='0x'+l.topics[1].slice(26).toLowerCase();
-      if(EX.has(from)||NON_USER_ADDRS.has(from))return;
+      if(EX.has(from))return;
       const blockNum=parseInt(l.blockNumber,16);
       const ts=Math.floor(Date.now()/1000-(latestBlock-blockNum)*5.6);
       if(ts<SS_TS)return;
@@ -683,14 +682,14 @@ function buildTradesDirect(txList, lp){
     const f=(tx.from||'').toLowerCase();const t=(tx.to||'').toLowerCase();
     const isBuy=f===lp;const isSell=t===lp;
     const trader=isBuy?t:f;
-    if(!trader||EX.has(trader)||NON_USER_ADDRS.has(trader)){
+    if(!trader||EX.has(trader)){
       if(i<5)log('  SKIP trader='+trader.slice(0,10)+'... EX='+EX.has(trader));
       return;
     }
     const ts=parseInt(tx.timeStamp||'0');
     const hash=(tx.hash||tx.transactionHash||('nohash'+i)).toLowerCase();
     const type=isBuy?'buy':'sell';
-    const key=hash+':'+type;
+    const key=hash+':'+type+':'+trader;
     let val=0;
     try{val=Number(BigInt(tx.value||tx.tokenValue||'0'))/Math.pow(10,DEC);}
     catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
@@ -728,7 +727,7 @@ feedTrades.forEach((tr,i)=>{const row=document.createElement('div');row.classNam
 row.innerHTML='<div class="ft '+(tr.type==='buy'?'buy':'sell')+'">'+(tr.type==='buy'?'BUY':'SELL')+'</div><div class="fw"><a href="'+EXP+'/address/'+tr.trader+'" target="_blank" title="'+tr.trader+'">'+tr.trader+'</a></div><div class="fa" style="color:'+(tr.type==='buy'?'var(--green)':'var(--red)')+'">'+(tr.type==='buy'?'+':'-')+fU(tr.usd)+'</div><div class="fa" style="color:var(--text2)">'+fC(tr.ctr)+' CTR</div><div class="ftm">'+tA(tr.ts)+'</div>';
 fb.appendChild(row)})}
 
-function buildJackpots(){jackpots=trades.filter(t=>t.type==='buy'&&t.usd>=JACKPOT_MIN_BUY&&!NON_USER_ADDRS.has((t.trader||'').toLowerCase())).map(t=>{const tier=jackpotRoll(t.hash);if(!tier)return null;const taxPaid=t.usd*TAX_RATE;const refund=taxPaid*tier.pct;return{...t,taxPaid,refund,tierPct:tier.pct,className:tier.className}}).filter(Boolean).sort((a,b)=>b.ts-a.ts)}
+function buildJackpots(){jackpots=trades.filter(t=>t.type==='buy'&&t.usd>=JACKPOT_MIN_BUY).map(t=>{const tier=jackpotRoll(t.hash);if(!tier)return null;const taxPaid=t.usd*TAX_RATE;const refund=taxPaid*tier.pct;return{...t,taxPaid,refund,tierPct:tier.pct,className:tier.className}}).filter(Boolean).sort((a,b)=>b.ts-a.ts)}
 
 function renderJackpots(){const jb=$('jackpotBody');$('jackpotCount').textContent=fN(jackpots.length);
 if(!jackpots.length){jb.innerHTML='<div class="jw-row h"><span>Refund</span><span>Wallet</span><span>Buy</span><span>Tax Back</span><span>Time</span></div><div class="tbe">No jackpot wins yet.</div>';return}
