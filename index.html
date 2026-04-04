@@ -689,7 +689,7 @@ function buildTradesDirect(txList, lp){
     const ts=parseInt(tx.timeStamp||'0');
     const hash=(tx.hash||tx.transactionHash||('nohash'+i)).toLowerCase();
     const type=isBuy?'buy':'sell';
-    const key=hash+':'+type;
+    const key=hash+':'+type+':'+trader;
     let val=0;
     try{val=Number(BigInt(tx.value||tx.tokenValue||'0'))/Math.pow(10,DEC);}
     catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
