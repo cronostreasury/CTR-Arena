@@ -517,6 +517,7 @@ const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
 const SS_TS=SS.getTime()/1e3;
 const JACKPOT_TOTAL_WEIGHT=JACKPOT_TIERS.reduce((s,t)=>s+t.weight,0);
 const TRANSFER_TOPIC='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const SWAP_TOPIC='0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
 const LP_PADDED='0x'+LP.slice(2).toLowerCase().padStart(64,'0');
 
 let price=0,txs=[],trades=[],tm={},lb=[],jackpots=[];
@@ -541,6 +542,18 @@ async function rpcCall(method,params){
   if(res.error)throw new Error(res.error.message||'RPC error');
   return res.result;
 }
+function decCtr(raw){return Number(raw)/Math.pow(10,DEC)}
+function parseU256At(hex,idx){
+  const clean=(hex||'0x').replace(/^0x/,'').padEnd(64*4,'0');
+  return BigInt('0x'+clean.slice(idx*64,(idx+1)*64));
+}
+async function getPairTokenOrder(){
+  const t0=await rpcCall('eth_call',[{to:LP,data:'0x0dfe1681'},'latest']);
+  const t1=await rpcCall('eth_call',[{to:LP,data:'0xd21220a7'},'latest']);
+  const token0='0x'+String(t0||'').slice(-40).toLowerCase();
+  const token1='0x'+String(t1||'').slice(-40).toLowerCase();
+  return {ctrIs0:token0===CTR.toLowerCase(),token0,token1};
+}
 function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
 
 const CHUNK=1800;
@@ -562,6 +575,47 @@ async function fetchTx(){
 
 async function _fetchTx(){
   const lp=LP.toLowerCase();
+
+  // --- PRIMARY: Swap logs from LP (accurate trader recipient) ---
+  try{
+    log('Cronos RPC swap logs...');
+    const latestHex=await rpcCall('eth_blockNumber',[]);const latestBlock=parseInt(latestHex,16);
+    const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS_TS);
+    const blocksBack=Math.min(Math.ceil(secsFromSS/5.6)+500,200000);
+    const fromBlock=Math.max(1,latestBlock-blocksBack);
+    const pair=await getPairTokenOrder();
+    const swapLogs=await fetchLogsChunked({address:LP,topics:[SWAP_TOPIC]},fromBlock,latestBlock);
+    log('Swap logs: '+swapLogs.length);
+    const parsed=[];
+    swapLogs.forEach(l=>{
+      if(!Array.isArray(l.topics)||l.topics.length<3)return;
+      const to='0x'+l.topics[2].slice(26).toLowerCase();
+      const sender='0x'+l.topics[1].slice(26).toLowerCase();
+      const a0In=parseU256At(l.data,0),a1In=parseU256At(l.data,1),a0Out=parseU256At(l.data,2),a1Out=parseU256At(l.data,3);
+      const ctrIn=pair.ctrIs0?decCtr(a0In):decCtr(a1In);
+      const ctrOut=pair.ctrIs0?decCtr(a0Out):decCtr(a1Out);
+      if(ctrIn<=0&&ctrOut<=0)return;
+      const type=ctrOut>ctrIn?'buy':'sell';
+      const ctrAmt=type==='buy'?ctrOut:ctrIn;
+      if(ctrAmt<=0)return;
+      const trader=!EX.has(to)?to:(!EX.has(sender)?sender:to);
+      if(EX.has(trader))return;
+      const blockNum=parseInt(l.blockNumber,16);
+      const ts=Math.floor(Date.now()/1000-(latestBlock-blockNum)*5.6);
+      if(ts<SS_TS)return;
+      parsed.push({hash:(l.transactionHash||'').toLowerCase(),ts,type,trader,ctr:ctrAmt,usd:ctrAmt*price,logIndex:parseInt(l.logIndex||'0x0',16)});
+    });
+    const deduped=new Map();
+    parsed.forEach(t=>{const key=t.hash+':'+t.logIndex+':'+t.type;if(!deduped.has(key))deduped.set(key,t)});
+    trades=[...deduped.values()].sort((a,b)=>b.ts-a.ts);
+    if(trades.length){
+      setSt('LIVE · Cronos Swap Logs',1);
+      log('Built '+trades.length+' trades from swap logs');
+      await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
+      return;
+    }
+    log('Swap logs empty - trying Blockscout...');
+  }catch(e){log('Swap logs fail: '+e.message);}
 
   // --- PRIMARY: Blockscout Explorer API ---
   try{
