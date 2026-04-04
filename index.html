@@ -572,17 +572,10 @@ async function _fetchTx(){
     if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
       log('Blockscout OK - '+r.result.length+' raw transfers');
       setSt('LIVE · Blockscout',1);
-      // Blockscout tokentx: each row has from/to = actual sender/recipient
-      // A buy = LP sent tokens TO a user (from=LP, to=user)
-      // A sell = user sent tokens TO LP (from=user, to=LP)
-      const filtered=r.result.filter(tx=>{
-        const ts=parseInt(tx.timeStamp||'0');
-        if(ts<SS_TS)return false;
-        const f=(tx.from||'').toLowerCase();
-        const t=(tx.to||'').toLowerCase();
-        return f===lp||t===lp;
-      });
-      log('Season txs after filter: '+filtered.length);
+      // Pass all season transfers - buildTradesDirect groups by txHash and
+      // identifies buy/sell by which transfers involve the LP address
+      const filtered=r.result.filter(tx=>parseInt(tx.timeStamp||'0')>=SS_TS);
+      log('Season transfers: '+filtered.length);
       buildTradesDirect(filtered,lp);
       await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
       return;
@@ -651,7 +644,7 @@ async function _fetchTx(){
     const r=await fetchJson('https://api.cronoscan.com/api'+q,{},20000);
     if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
       log('CronosScan OK - '+r.result.length+' txs');setSt('LIVE · CronosScan',1);
-      const filtered=r.result.filter(tx=>parseInt(tx.timeStamp||'0')>=SS_TS&&((tx.from||'').toLowerCase()===lp||(tx.to||'').toLowerCase()===lp));
+      const filtered=r.result.filter(tx=>parseInt(tx.timeStamp||'0')>=SS_TS);
       buildTradesDirect(filtered,lp);
       await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
       return;
@@ -664,29 +657,53 @@ async function _fetchTx(){
   jackpots=[];renderJackpots();
 }
 
-// Build trades directly from Explorer API response (no isContract needed)
-// Explorer gives us actual sender/recipient, not intermediate router hops
-function buildTradesDirect(txList,lp){
-  const deduped=new Map();
+// Build trades from Blockscout tokentx response.
+// Blockscout tokentx: for each Transfer event in a swap tx:
+//   tx.from = actual transaction sender (the REAL user/trader)
+//   tx.to   = token recipient of THIS specific Transfer event
+// Strategy: group all transfers per txHash, determine buy/sell from which
+// side involves the LP, then use tx.from as the trader (tx initiator).
+function buildTradesDirect(txList, lp){
+  // Group transfers by txHash
+  const byHash=new Map();
   txList.forEach((tx,i)=>{
-    const f=(tx.from||'').toLowerCase();
-    const t=(tx.to||'').toLowerCase();
-    const isBuy=f===lp;  // LP -> user = buy
-    const isSell=t===lp; // user -> LP = sell
-    if(!isBuy&&!isSell)return;
-    const trader=isBuy?t:f;
-    if(!trader||EX.has(trader)||NON_USER_ADDRS.has(trader))return;
-    const ts=parseInt(tx.timeStamp||'0');
     const hash=(tx.hash||tx.transactionHash||('nohash'+i)).toLowerCase();
-    const key=hash+':'+(isBuy?'buy':'sell')+':'+trader;
-    let val=0;
-    try{val=Number(BigInt(tx.value||tx.tokenValue||'0'))/Math.pow(10,DEC);}
-    catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
-    if(!deduped.has(key))deduped.set(key,{hash,ts,type:isBuy?'buy':'sell',trader,ctr:0,usd:0});
-    const e=deduped.get(key);e.ctr+=val;e.usd+=val*price;
+    if(!byHash.has(hash))byHash.set(hash,[]);
+    byHash.get(hash).push(tx);
+  });
+
+  const deduped=new Map();
+  byHash.forEach((txs,hash)=>{
+    // Determine type: does any transfer go FROM LP (buy) or TO LP (sell)?
+    let isBuy=false,isSell=false,totalCtr=0;
+    let ts=0;
+    txs.forEach(tx=>{
+      const f=(tx.from||'').toLowerCase();
+      const t=(tx.to||'').toLowerCase();
+      if(f===lp)isBuy=true;
+      if(t===lp)isSell=true;
+      ts=Math.max(ts,parseInt(tx.timeStamp||'0'));
+      // Sum CTR value from transfers involving LP
+      if(f===lp||t===lp){
+        let val=0;
+        try{val=Number(BigInt(tx.value||tx.tokenValue||'0'))/Math.pow(10,DEC);}
+        catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
+        totalCtr+=val;
+      }
+    });
+    // tx.from on any row = the actual transaction initiator (the trader)
+    const trader=(txs[0].from||'').toLowerCase();
+    if(!trader||EX.has(trader)||NON_USER_ADDRS.has(trader))return;
+    // If both buy+sell flags set on same tx (e.g. router internal hops), treat as buy
+    // (LP sent tokens OUT = user received = buy)
+    const type=isBuy?'buy':'sell';
+    if(!isBuy&&!isSell)return;
+    if(totalCtr<=0)return;
+    const key=hash+':'+type;
+    if(!deduped.has(key))deduped.set(key,{hash,ts,type,trader,ctr:totalCtr,usd:totalCtr*price});
   });
   trades=[...deduped.values()].sort((a,b)=>b.ts-a.ts);
-  log('buildTradesDirect: '+trades.length+' trades from '+txList.length+' raw');
+  log('buildTradesDirect: '+trades.length+' trades from '+byHash.size+' unique txs ('+txList.length+' raw transfers)');
 }
 
 async function fetchDex(){try{const r=await fetch('https://api.dexscreener.com/latest/dex/pairs/cronos/'+LP);const d=await r.json();const p=d.pair;if(!p)return;
