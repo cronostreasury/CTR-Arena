@@ -492,7 +492,7 @@ function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></d
 async function isContract(addr){
   const a=addr.toLowerCase();if(EX.has(a))return true;if(contractCache[a]!==undefined)return contractCache[a];
   try{const res=await fetchJson(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'eth_getCode',params:[a,'latest'],id:1})});
-  const isC=res.result&&res.result!=='0x'&&res.result!=='0x0'&&res.result.length>4;contractCache[a]=!!isC;return contractCache[a]}catch(e){contractCache[a]=true;return true}
+  const isC=res.result&&res.result!=='0x'&&res.result!=='0x0'&&res.result.length>4;contractCache[a]=!!isC;return contractCache[a]}catch(e){contractCache[a]=false;return false}
 }
 
 async function fetchDex(){
@@ -519,7 +519,7 @@ async function fetchDex(){
   }catch(e){log('PACK Dex ERR: '+e.message)}
 }
 
-const CHUNK=5000;
+const CHUNK=2000;
 async function fetchLogsChunked(filter,fromBlock,toBlock){
   const allLogs=[];let cur=fromBlock;
   while(cur<=toBlock){const end=Math.min(cur+CHUNK-1,toBlock);const f='0x'+cur.toString(16);const t='0x'+end.toString(16);
@@ -556,9 +556,7 @@ async function fetchTx(){
 
   // --- FALLBACK: Explorer APIs (may fail due to CORS in browser) ---
   const endpoints=[
-    {name:'CronosScan',url:'https://api.cronoscan.com/api'},
-    {name:'Blockscout',url:'https://explorer-api.cronos.org/mainnet/api'},
-    {name:'Blockscout-legacy',url:'https://cronos.org/explorer/api'}
+    {name:'Blockscout-legacy-scan',url:'https://cronos.org/explorer/api'}
   ];
   const q='?module=account&action=tokentx&address='+PACK_LP+'&contractaddress='+PACK_TOKEN+'&page=1&offset=2000&sort=desc';
   for(const ep of endpoints){
