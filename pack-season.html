@@ -519,7 +519,7 @@ async function fetchDex(){
   }catch(e){log('PACK Dex ERR: '+e.message)}
 }
 
-const CHUNK=5000;
+const CHUNK=2000;
 async function fetchLogsChunked(filter,fromBlock,toBlock){
   const allLogs=[];let cur=fromBlock;
   while(cur<=toBlock){const end=Math.min(cur+CHUNK-1,toBlock);const f='0x'+cur.toString(16);const t='0x'+end.toString(16);

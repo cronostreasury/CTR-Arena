@@ -575,7 +575,7 @@ async function getTxSender(hash){
   }
 }
 
-const CHUNK=5000;
+const CHUNK=2000;
 async function fetchLogsChunked(filter,fromBlock,toBlock){
   const allLogs=[];let cur=fromBlock;
   while(cur<=toBlock){const end=Math.min(cur+CHUNK-1,toBlock);
