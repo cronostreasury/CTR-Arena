@@ -519,7 +519,7 @@ async function fetchDex(){
   }catch(e){log('PACK Dex ERR: '+e.message)}
 }
 
-const CHUNK=1800;
+const CHUNK=5000;
 async function fetchLogsChunked(filter,fromBlock,toBlock){
   const allLogs=[];let cur=fromBlock;
   while(cur<=toBlock){const end=Math.min(cur+CHUNK-1,toBlock);const f='0x'+cur.toString(16);const t='0x'+end.toString(16);
@@ -532,54 +532,46 @@ async function fetchTx(){
   if(!PACK_LP){log('No LP yet, skipping tx fetch');return;}
   const LP_PADDED='0x'+PACK_LP.slice(2).padStart(64,'0');
 
-  // --- PRIMARY: CronosScan API ---
+  // --- PRIMARY: Cronos RPC eth_getLogs (CORS-safe, works from browser) ---
   try{
-    log('CronosScan for PACK...');
-    const q='?module=account&action=tokentx&address='+PACK_LP+'&contractaddress='+PACK_TOKEN+'&page=1&offset=2000&sort=desc';
-    const r=await fetchJson('https://api.cronoscan.com/api'+q,{},20000);
-    if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-      log('CronosScan OK - '+r.result.length+' txs');setSt('LIVE · CronosScan',1);txs=r.result;
-      await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
-    }
-    log('CronosScan empty (status: '+(r?.status||'?')+') - trying RPC...');
-  }catch(e){log('CronosScan fail: '+e.message+' - trying RPC...');}
-
-  // --- SECONDARY: RPC fallback ---
-  try{
-    log('Cronos RPC eth_getLogs...');
+    log('Cronos RPC eth_getLogs for PACK...');
     const latestHex=await rpcCall('eth_blockNumber',[]);const latestBlock=parseInt(latestHex,16);
     const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS_TS);
     const blocksBack=Math.min(Math.ceil(secsFromSS/5.6)+500,200000);
     const fromBlock=Math.max(1,latestBlock-blocksBack);
+    log('Scanning '+blocksBack+' blocks (~'+Math.ceil(blocksBack/CHUNK)+' chunks)...');
     const buyFilter={address:PACK_TOKEN,topics:[TRANSFER_TOPIC,LP_PADDED,null]};
     const sellFilter={address:PACK_TOKEN,topics:[TRANSFER_TOPIC,null,LP_PADDED]};
     const [buyLogs,sellLogs]=await Promise.all([fetchLogsChunked(buyFilter,fromBlock,latestBlock),fetchLogsChunked(sellFilter,fromBlock,latestBlock)]);
     log('RPC: '+buyLogs.length+' buys, '+sellLogs.length+' sells');
-    const allLogs=[...buyLogs.map(l=>({...l,_type:'buy'})),...sellLogs.map(l=>({...l,_type:'sell'}))];
-    if(!allLogs.length){log('No logs found - trying Blockscout...');}
-    else{
+    const allLogs=[...buyLogs,...sellLogs];
+    if(allLogs.length){
       txs=allLogs.map(l=>{const from='0x'+l.topics[1].slice(26).toLowerCase();const to='0x'+l.topics[2].slice(26).toLowerCase();const blockNum=parseInt(l.blockNumber,16);const secsAgo=(latestBlock-blockNum)*5.6;const ts=Math.floor(Date.now()/1000-secsAgo);return{hash:l.transactionHash,from,to,value:String(Number(BigInt(l.data||'0x0'))),timeStamp:String(ts)};});
       txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
       setSt('LIVE · Cronos RPC',1);
       await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
     }
-  }catch(e){log('RPC fail: '+e.message+' - trying Blockscout...');}
+    log('RPC returned 0 logs - trying explorer APIs...');
+  }catch(e){log('RPC fail: '+e.message+' - trying explorer APIs...');}
 
-  // --- TERTIARY: Blockscout (legacy fallback) ---
-  try{
-    log('Blockscout for PACK...');
-    const q='?module=account&action=tokentx&address='+PACK_LP+'&contractaddress='+PACK_TOKEN+'&page=1&offset=2000&sort=desc';
-    const bsUrls=['https://explorer-api.cronos.org/mainnet/api','https://cronos.org/explorer/api'];
-    for(const baseUrl of bsUrls){
-      try{
-        const r=await fetchJson(baseUrl+q,{},20000);
-        if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-          log('Blockscout OK ('+baseUrl+') - '+r.result.length+' txs');setSt('LIVE · Blockscout',1);txs=r.result;
-          await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
-        }
-      }catch(ex){log('Blockscout fail at '+baseUrl+': '+ex.message);}
-    }
-  }catch(e){log('Blockscout all fail: '+e.message);}
+  // --- FALLBACK: Explorer APIs (may fail due to CORS in browser) ---
+  const endpoints=[
+    {name:'CronosScan',url:'https://api.cronoscan.com/api'},
+    {name:'Blockscout',url:'https://explorer-api.cronos.org/mainnet/api'},
+    {name:'Blockscout-legacy',url:'https://cronos.org/explorer/api'}
+  ];
+  const q='?module=account&action=tokentx&address='+PACK_LP+'&contractaddress='+PACK_TOKEN+'&page=1&offset=2000&sort=desc';
+  for(const ep of endpoints){
+    try{
+      log(ep.name+'...');
+      const r=await fetchJson(ep.url+q,{},20000);
+      if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
+        log(ep.name+' OK - '+r.result.length+' txs');setSt('LIVE · '+ep.name,1);txs=r.result;
+        await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
+      }
+      log(ep.name+' empty');
+    }catch(ex){log(ep.name+' fail: '+ex.message);}
+  }
 
   setSt('Error - retry 30s',0);
   log('All sources failed. Auto-retry in 30s.');
