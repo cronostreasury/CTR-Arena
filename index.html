@@ -480,7 +480,7 @@ Final Score = Raw Points × Anti-Wash × Holding Bonus</span></div>
     </div>
   </section>
 
-  <footer><div class="fti"><div class="ftl">CTR · Cronos Treasury Reserve · Season 1<span class="ftc">Contract: 0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC</span></div><div class="ftlk"><a href="https://cronostreasury.github.io" target="_blank">Main Site</a><a href="https://dexscreener.com/cronos/0xf118aa245b0627b4752607620d0048b492a5f4fb" target="_blank">DexScreener</a><a href="https://cronostreasury.github.io/CTR-Governance/" target="_blank">Governance</a><a href="pack-season.html">PACK Season</a></div></div><div class="ftsrc">Data from <strong>Cronos RPC</strong> &amp; <strong>DexScreener</strong> · Auto-refresh 30s</div></footer>
+  <footer><div class="fti"><div class="ftl">CTR · Cronos Treasury Reserve · Season 1<span class="ftc">Contract: 0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC</span></div><div class="ftlk"><a href="https://cronostreasury.github.io" target="_blank">Main Site</a><a href="https://dexscreener.com/cronos/0xf118aa245b0627b4752607620d0048b492a5f4fb" target="_blank">DexScreener</a><a href="https://cronostreasury.github.io/CTR-Governance/" target="_blank">Governance</a><a href="pack-season.html">PACK Season</a></div></div><div class="ftsrc">Data from <strong>CronosScan</strong>, <strong>Cronos RPC</strong> &amp; <strong>DexScreener</strong> · Auto-refresh 30s</div></footer>
 </div>
 
 <script>
@@ -593,21 +593,21 @@ async function fetchTx(){
 }
 
 async function _fetchTx(){
-  // --- PRIMARY: Blockscout Explorer API ---
+  // --- PRIMARY: CronosScan API (most reliable) ---
   try{
-    log('Blockscout...');
+    log('CronosScan...');
     const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=2000&sort=desc';
-    const r=await fetchJson('https://cronos.org/explorer/api'+q,{},20000);
+    const r=await fetchJson('https://api.cronoscan.com/api'+q,{},20000);
     if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-      log('Blockscout OK - '+r.result.length+' txs');
-      setSt('LIVE · Blockscout',1);
+      log('CronosScan OK - '+r.result.length+' txs');
+      setSt('LIVE · CronosScan',1);
       txs=r.result;
       await buildTrades();
       await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
       return;
     }
-    log('Blockscout empty - trying RPC...');
-  }catch(e){log('Blockscout fail: '+e.message+' - trying RPC...');}
+    log('CronosScan empty/fail (status: '+(r?.status||'?')+', msg: '+(r?.message||'none')+') - trying RPC...');
+  }catch(e){log('CronosScan fail: '+e.message+' - trying RPC...');}
 
   // --- SECONDARY: Chunked eth_getLogs via Cronos RPC ---
   try{
@@ -617,7 +617,7 @@ async function _fetchTx(){
     const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS_TS);
     const blocksBack=Math.min(Math.ceil(secsFromSS/5.6)+500,200000);
     const fromBlock=Math.max(1,latestBlock-blocksBack);
-    log('Querying '+blocksBack+' blocks (~'+Math.ceil(blocksBack/CHUNK)+' chunks)...');
+    log('Querying '+blocksBack+' blocks (~'+Math.ceil(blocksBack/CHUNK)+' chunks) from block '+fromBlock+'...');
 
     const buyFilter={address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,null]};
     const sellFilter={address:CTR,topics:[TRANSFER_TOPIC,null,LP_PADDED]};
@@ -631,46 +631,50 @@ async function _fetchTx(){
 
     const allLogs=[...buyLogs,...sellLogs];
     if(!allLogs.length){
-      log('No transfer logs found');
-      setSt('No trades found',0);
-      $('feedBody').innerHTML='<div class="tbe">No CTR trades since season start. Try refreshing.</div>';
-      $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data yet</td></tr>';
-      jackpots=[];renderJackpots();
-      return;
-    }
-
-    txs=allLogs.map(l=>{
-      const from='0x'+l.topics[1].slice(26).toLowerCase();
-      const to='0x'+l.topics[2].slice(26).toLowerCase();
-      const blockNum=parseInt(l.blockNumber,16);
-      const secsAgo=(latestBlock-blockNum)*5.6;
-      const ts=Math.floor(Date.now()/1000-secsAgo);
-      let value='0';
-      try{value=String(Number(BigInt(l.data||'0x0')));}catch(e){}
-      return{hash:l.transactionHash,from,to,value,timeStamp:String(ts)};
-    });
-    txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
-    setSt('LIVE · Cronos RPC',1);
-    await buildTrades();
-    await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
-    return;
-  }catch(e){log('RPC error: '+e.message+' - trying CronosScan...');}
-
-  // --- TERTIARY: CronosScan ---
-  try{
-    const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
-    const r=await fetchJson('https://api.cronoscan.com/api'+q,{},20000);
-    if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-      log('CronosScan OK - '+r.result.length+' txs');
-      setSt('LIVE · CronosScan',1);
-      txs=r.result;
+      log('No transfer logs found - trying Blockscout...');
+    }else{
+      txs=allLogs.map(l=>{
+        const from='0x'+l.topics[1].slice(26).toLowerCase();
+        const to='0x'+l.topics[2].slice(26).toLowerCase();
+        const blockNum=parseInt(l.blockNumber,16);
+        const secsAgo=(latestBlock-blockNum)*5.6;
+        const ts=Math.floor(Date.now()/1000-secsAgo);
+        let value='0';
+        try{value=String(Number(BigInt(l.data||'0x0')));}catch(e){}
+        return{hash:l.transactionHash,from,to,value,timeStamp:String(ts)};
+      });
+      txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
+      setSt('LIVE · Cronos RPC',1);
       await buildTrades();
       await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
       return;
     }
-  }catch(ex){log('CronosScan fail: '+ex.message)}
+  }catch(e){log('RPC error: '+e.message+' - trying Blockscout...');}
+
+  // --- TERTIARY: Blockscout Explorer API (legacy fallback) ---
+  try{
+    log('Blockscout...');
+    const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=2000&sort=desc';
+    const bsUrls=['https://explorer-api.cronos.org/mainnet/api','https://cronos.org/explorer/api'];
+    for(const baseUrl of bsUrls){
+      try{
+        log('Trying '+baseUrl+'...');
+        const r=await fetchJson(baseUrl+q,{},20000);
+        if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
+          log('Blockscout OK ('+baseUrl+') - '+r.result.length+' txs');
+          setSt('LIVE · Blockscout',1);
+          txs=r.result;
+          await buildTrades();
+          await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
+          return;
+        }
+        log('Blockscout empty at '+baseUrl);
+      }catch(ex){log('Blockscout fail at '+baseUrl+': '+ex.message);}
+    }
+  }catch(e){log('Blockscout all fail: '+e.message)}
 
   setSt('No data - retry 30s',0);
+  log('All 3 sources failed. Auto-retry in 30s.');
   $('feedBody').innerHTML='<div class="tbe">Could not fetch trades. Auto-retry in 30s.</div>';
   $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';
   jackpots=[];renderJackpots();

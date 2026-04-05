@@ -532,20 +532,21 @@ async function fetchTx(){
   if(!PACK_LP){log('No LP yet, skipping tx fetch');return;}
   const LP_PADDED='0x'+PACK_LP.slice(2).padStart(64,'0');
 
-  // Try Blockscout
+  // --- PRIMARY: CronosScan API ---
   try{
-    log('Blockscout for PACK...');
+    log('CronosScan for PACK...');
     const q='?module=account&action=tokentx&address='+PACK_LP+'&contractaddress='+PACK_TOKEN+'&page=1&offset=2000&sort=desc';
-    const r=await fetchJson('https://cronos.org/explorer/api'+q,{},20000);
+    const r=await fetchJson('https://api.cronoscan.com/api'+q,{},20000);
     if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-      log('Blockscout OK - '+r.result.length+' txs');setSt('LIVE · Blockscout',1);txs=r.result;
+      log('CronosScan OK - '+r.result.length+' txs');setSt('LIVE · CronosScan',1);txs=r.result;
       await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
     }
-    log('Blockscout empty - trying RPC...');
-  }catch(e){log('Blockscout fail: '+e.message);}
+    log('CronosScan empty (status: '+(r?.status||'?')+') - trying RPC...');
+  }catch(e){log('CronosScan fail: '+e.message+' - trying RPC...');}
 
-  // RPC fallback
+  // --- SECONDARY: RPC fallback ---
   try{
+    log('Cronos RPC eth_getLogs...');
     const latestHex=await rpcCall('eth_blockNumber',[]);const latestBlock=parseInt(latestHex,16);
     const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS_TS);
     const blocksBack=Math.min(Math.ceil(secsFromSS/5.6)+500,200000);
@@ -555,12 +556,35 @@ async function fetchTx(){
     const [buyLogs,sellLogs]=await Promise.all([fetchLogsChunked(buyFilter,fromBlock,latestBlock),fetchLogsChunked(sellFilter,fromBlock,latestBlock)]);
     log('RPC: '+buyLogs.length+' buys, '+sellLogs.length+' sells');
     const allLogs=[...buyLogs.map(l=>({...l,_type:'buy'})),...sellLogs.map(l=>({...l,_type:'sell'}))];
-    if(!allLogs.length){setSt('No trades in range',0);$('feedBody').innerHTML='<div class="tbe">No PACK season trades found.</div>';$('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data</td></tr>';return;}
-    txs=allLogs.map(l=>{const from='0x'+l.topics[1].slice(26).toLowerCase();const to='0x'+l.topics[2].slice(26).toLowerCase();const blockNum=parseInt(l.blockNumber,16);const secsAgo=(latestBlock-blockNum)*5.6;const ts=Math.floor(Date.now()/1000-secsAgo);return{hash:l.transactionHash,from,to,value:String(Number(BigInt(l.data||'0x0'))),timeStamp:String(ts)};});
-    txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
-    setSt('LIVE · Cronos RPC',1);
-    await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();
-  }catch(e){setSt('Error - retry 30s',0);log('RPC fail: '+e.message);}
+    if(!allLogs.length){log('No logs found - trying Blockscout...');}
+    else{
+      txs=allLogs.map(l=>{const from='0x'+l.topics[1].slice(26).toLowerCase();const to='0x'+l.topics[2].slice(26).toLowerCase();const blockNum=parseInt(l.blockNumber,16);const secsAgo=(latestBlock-blockNum)*5.6;const ts=Math.floor(Date.now()/1000-secsAgo);return{hash:l.transactionHash,from,to,value:String(Number(BigInt(l.data||'0x0'))),timeStamp:String(ts)};});
+      txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
+      setSt('LIVE · Cronos RPC',1);
+      await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
+    }
+  }catch(e){log('RPC fail: '+e.message+' - trying Blockscout...');}
+
+  // --- TERTIARY: Blockscout (legacy fallback) ---
+  try{
+    log('Blockscout for PACK...');
+    const q='?module=account&action=tokentx&address='+PACK_LP+'&contractaddress='+PACK_TOKEN+'&page=1&offset=2000&sort=desc';
+    const bsUrls=['https://explorer-api.cronos.org/mainnet/api','https://cronos.org/explorer/api'];
+    for(const baseUrl of bsUrls){
+      try{
+        const r=await fetchJson(baseUrl+q,{},20000);
+        if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
+          log('Blockscout OK ('+baseUrl+') - '+r.result.length+' txs');setSt('LIVE · Blockscout',1);txs=r.result;
+          await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
+        }
+      }catch(ex){log('Blockscout fail at '+baseUrl+': '+ex.message);}
+    }
+  }catch(e){log('Blockscout all fail: '+e.message);}
+
+  setSt('Error - retry 30s',0);
+  log('All sources failed. Auto-retry in 30s.');
+  $('feedBody').innerHTML='<div class="tbe">Could not fetch trades. Auto-retry in 30s.</div>';
+  $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';
 }
 
 async function buildTrades(LP_PADDED){
