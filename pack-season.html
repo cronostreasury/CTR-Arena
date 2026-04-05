@@ -519,7 +519,7 @@ async function fetchDex(){
   }catch(e){log('PACK Dex ERR: '+e.message)}
 }
 
-const CHUNK=5000;
+const CHUNK=2000;
 async function fetchLogsChunked(filter,fromBlock,toBlock){
   const allLogs=[];let cur=fromBlock;
   while(cur<=toBlock){const end=Math.min(cur+CHUNK-1,toBlock);const f='0x'+cur.toString(16);const t='0x'+end.toString(16);
@@ -532,7 +532,19 @@ async function fetchTx(){
   if(!PACK_LP){log('No LP yet, skipping tx fetch');return;}
   const LP_PADDED='0x'+PACK_LP.slice(2).padStart(64,'0');
 
-  // --- PRIMARY: Cronos RPC eth_getLogs (CORS-safe, works from browser) ---
+  // --- PRIMARY: Blockscout Explorer API (fast, CORS-safe) ---
+  try{
+    log('Blockscout for PACK...');
+    const q='?module=account&action=tokentx&address='+PACK_LP+'&contractaddress='+PACK_TOKEN+'&page=1&offset=2000&sort=desc';
+    const r=await fetchJson('https://cronos.org/explorer/api'+q,{},20000);
+    if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
+      log('Blockscout OK - '+r.result.length+' txs');setSt('LIVE · Blockscout',1);txs=r.result;
+      await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
+    }
+    log('Blockscout empty - trying RPC...');
+  }catch(e){log('Blockscout fail: '+e.message+' - trying RPC...');}
+
+  // --- SECONDARY: Cronos RPC eth_getLogs ---
   try{
     log('Cronos RPC eth_getLogs for PACK...');
     const latestHex=await rpcCall('eth_blockNumber',[]);const latestBlock=parseInt(latestHex,16);
@@ -551,20 +563,19 @@ async function fetchTx(){
       setSt('LIVE · Cronos RPC',1);
       await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
     }
-    log('RPC returned 0 logs - trying explorer APIs...');
-  }catch(e){log('RPC fail: '+e.message+' - trying explorer APIs...');}
+    log('RPC returned 0 logs - trying other explorers...');
+  }catch(e){log('RPC fail: '+e.message+' - trying other explorers...');}
 
-  // --- FALLBACK: Explorer APIs (may fail due to CORS in browser) ---
+  // --- TERTIARY: Other explorer APIs ---
   const endpoints=[
     {name:'CronosScan',url:'https://api.cronoscan.com/api'},
-    {name:'Blockscout',url:'https://explorer-api.cronos.org/mainnet/api'},
-    {name:'Blockscout-legacy',url:'https://cronos.org/explorer/api'}
+    {name:'Blockscout-v2',url:'https://explorer-api.cronos.org/mainnet/api'}
   ];
-  const q='?module=account&action=tokentx&address='+PACK_LP+'&contractaddress='+PACK_TOKEN+'&page=1&offset=2000&sort=desc';
+  const q2='?module=account&action=tokentx&address='+PACK_LP+'&contractaddress='+PACK_TOKEN+'&page=1&offset=2000&sort=desc';
   for(const ep of endpoints){
     try{
       log(ep.name+'...');
-      const r=await fetchJson(ep.url+q,{},20000);
+      const r=await fetchJson(ep.url+q2,{},20000);
       if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
         log(ep.name+' OK - '+r.result.length+' txs');setSt('LIVE · '+ep.name,1);txs=r.result;
         await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
