@@ -555,8 +555,9 @@ async function isContract(addr){
     contractCache[a]=!!isC;
     return contractCache[a];
   }catch(e){
-    contractCache[a]=true;
-    return true;
+    // If RPC is flaky/unreachable, don't classify unknown wallets as contracts.
+    contractCache[a]=false;
+    return false;
   }
 }
 const txSenderCache={};
@@ -636,9 +637,7 @@ async function _fetchTx(){
 
   // --- FALLBACK: Explorer APIs (may fail due to CORS in browser) ---
   const explorerEndpoints=[
-    {name:'CronosScan',url:'https://api.cronoscan.com/api'},
-    {name:'Blockscout',url:'https://explorer-api.cronos.org/mainnet/api'},
-    {name:'Blockscout-legacy',url:'https://cronos.org/explorer/api'}
+    {name:'Blockscout-legacy-scan',url:'https://cronos.org/explorer/api'}
   ];
   const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=2000&sort=desc';
   for(const ep of explorerEndpoints){
