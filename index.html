@@ -1066,11 +1066,15 @@ async function lookupWallet(){
 }
 $('walletInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupWallet()});
 
+function updCD(){
+  const now=new Date();
+  const diff=Math.max(0,SE-now);
   $('cdD').textContent=String(Math.floor(diff/864e5)).padStart(2,'0');
   $('cdH').textContent=String(Math.floor(diff%864e5/36e5)).padStart(2,'0');
   $('cdM').textContent=String(Math.floor(diff%36e5/6e4)).padStart(2,'0');
   $('cdS').textContent=String(Math.floor(diff%6e4/1e3)).padStart(2,'0');
-  const el=Math.max(0,now-SS);const pct=Math.min(100,el/(SE-SS)*100);
+  const el=Math.max(0,now-SS);
+  const pct=Math.min(100,el/(SE-SS)*100);
   $('seasonFill').style.width=pct+'%';
   $('dayNum').textContent=Math.min(SD,Math.ceil(el/864e5));
   $('seasonPct').textContent=pct.toFixed(0)+'%';
