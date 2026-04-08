@@ -463,19 +463,29 @@ async function fetchLogsChunked(filter,fromBlock,toBlock){
 async function fetchTx(){
   // --- PRIMARY: Blockscout Explorer API (fastest, no block-range limit) ---
   try{
-    log('Blockscout...');
     const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=2000&sort=desc';
-    const r=await fetchJson('https://cronos.org/explorer/api'+q,{},20000);
-    if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-      log('Blockscout OK — '+r.result.length+' txs');
-      setSt('LIVE · Blockscout',1);
-      txs=r.result;
-      await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();
-      return;
+    const explorerEndpoints=[
+      {label:'Explorer API',url:'https://explorer.cronos.org/api'},
+      {label:'Blockscout',url:'https://cronos.org/explorer/api'}
+    ];
+    for(const ep of explorerEndpoints){
+      try{
+        log(ep.label+'...');
+        const r=await fetchJson(ep.url+q,{},20000);
+        if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
+          log(ep.label+' OK — '+r.result.length+' txs');
+          setSt('LIVE · '+ep.label,1);
+          txs=r.result;
+          await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();
+          return;
+        }
+      }catch(e){
+        log(ep.label+' fail: '+e.message);
+      }
     }
-    log('Blockscout empty/bad status — trying RPC...');
+    log('Explorer API empty/bad status — trying RPC...');
   }catch(e){
-    log('Blockscout fail: '+e.message+' — trying RPC...');
+    log('Explorer API fail: '+e.message+' — trying RPC...');
   }
 
   // --- SECONDARY: Chunked eth_getLogs via Cronos RPC ---
@@ -517,7 +527,7 @@ async function fetchTx(){
       const blockNum=parseInt(l.blockNumber,16);
       const secsAgo=(latestBlock-blockNum)*5.6;
       const ts=Math.floor(Date.now()/1000-secsAgo);
-      return{hash:l.transactionHash,from,to,value:String(Number(BigInt(l.data||'0x0'))),timeStamp:String(ts)};
+      return{hash:l.transactionHash,from,to,value:(()=>{try{return BigInt(l.data||'0x0').toString()}catch(_){return '0'}})(),timeStamp:String(ts)};
     });
     txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
     setSt('LIVE · Cronos RPC',1);
