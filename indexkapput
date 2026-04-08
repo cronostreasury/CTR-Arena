@@ -714,7 +714,7 @@ async function _fetchTx(){
       const secsAgo=(latestBlock-blockNum)*5.6;
       const ts=Math.floor(nowSec-secsAgo);
       let value='0';
-      try{value=String(Number(BigInt(l.data||'0x0')));}catch(e){}
+      try{value=BigInt(l.data||'0x0').toString();}catch(e){}
       return{
         hash:l.transactionHash,
         logIndex:parseInt(l.logIndex||'0x0',16),

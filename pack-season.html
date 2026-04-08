@@ -546,7 +546,7 @@ async function fetchTx(){
     log('RPC: '+buyLogs.length+' buys, '+sellLogs.length+' sells');
     const allLogs=[...buyLogs,...sellLogs];
     if(allLogs.length){
-      txs=allLogs.map(l=>{const from='0x'+l.topics[1].slice(26).toLowerCase();const to='0x'+l.topics[2].slice(26).toLowerCase();const blockNum=parseInt(l.blockNumber,16);const secsAgo=(latestBlock-blockNum)*5.6;const ts=Math.floor(Date.now()/1000-secsAgo);return{hash:l.transactionHash,from,to,value:String(Number(BigInt(l.data||'0x0'))),timeStamp:String(ts)};});
+      txs=allLogs.map(l=>{const from='0x'+l.topics[1].slice(26).toLowerCase();const to='0x'+l.topics[2].slice(26).toLowerCase();const blockNum=parseInt(l.blockNumber,16);const secsAgo=(latestBlock-blockNum)*5.6;const ts=Math.floor(Date.now()/1000-secsAgo);return{hash:l.transactionHash,from,to,value:(()=>{try{return BigInt(l.data||'0x0').toString()}catch(_){return '0'}})(),timeStamp:String(ts)};});
       txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
       setSt('LIVE · Cronos RPC',1);
       await buildTrades(LP_PADDED);await proc();renderFeed();renderLB();updCounts();updPrizePool();return;
