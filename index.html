@@ -599,22 +599,48 @@ async function getTxSender(hash){
   }catch(e){txSenderCache[h]=null;return null}
 }
 
-// Chunked log fetcher (V1 logic, CHUNK=1800 to stay under Cronos limit)
-async function fetchLogsChunked(filter,fromBlock,toBlock){
-  const allLogs=[];let cur=fromBlock;
+
+// Delay helper
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+// RPC call with retry + backoff
+async function rpcCallRetry(method,params,retries=3){
+  for(let i=0;i<retries;i++){
+    try{return await rpcCall(method,params);}
+    catch(e){
+      if(i===retries-1)throw e;
+      await sleep(500*(i+1));
+    }
+  }
+}
+
+// Tracks highest block already fetched so refreshes are incremental
+let lastFetchedBlock=0;
+// Log cache keyed by txHash+type so deduplication works across refreshes
+const logCache=new Map();
+
+// Chunked log fetcher: strictly sequential, one filter at a time, with delay+retry
+async function fetchLogsChunked(filter,fromBlock,toBlock,label,progressCb){
+  const allLogs=[];
+  const total=Math.ceil((toBlock-fromBlock+1)/CHUNK);
+  let done=0,cur=fromBlock;
   while(cur<=toBlock){
     const end=Math.min(cur+CHUNK-1,toBlock);
     try{
-      const chunk=await rpcCall('eth_getLogs',[{...filter,fromBlock:'0x'+cur.toString(16),toBlock:'0x'+end.toString(16)}]);
+      const chunk=await rpcCallRetry('eth_getLogs',[{...filter,fromBlock:'0x'+cur.toString(16),toBlock:'0x'+end.toString(16)}]);
       if(Array.isArray(chunk))allLogs.push(...chunk);
-    }catch(e){log('Chunk '+cur+'-'+end+' err: '+e.message.slice(0,60));}
+    }catch(e){
+      log(label+' chunk '+cur+'-'+end+' failed: '+e.message.slice(0,60));
+    }
+    done++;
+    if(progressCb)progressCb(done,total);
     cur=end+1;
-    await new Promise(r=>setTimeout(r,0));
+    await sleep(180); // throttle: ~5-6 req/s, well under typical RPC limits
   }
   return allLogs;
 }
 
-// === MAIN FETCH: Cronos RPC only, no fallback, full season history ===
+// === MAIN FETCH: Cronos RPC only, sequential, incremental on refresh ===
 async function fetchTx(){
   if(fetchInProgress){log('Fetch already running, skipping');return;}
   fetchInProgress=true;
@@ -624,71 +650,67 @@ async function fetchTx(){
 async function _fetchTx(){
   try{
     setSt('Syncing...',1);
-    log('Fetching block number...');
-    const latestHex=await rpcCall('eth_blockNumber',[]);
+    const latestHex=await rpcCallRetry('eth_blockNumber',[]);
     const latestBlock=parseInt(latestHex,16);
-
-    // Calculate exact block range from season start
-    // Cronos avg ~5.6s/block
     const nowSec=Math.floor(Date.now()/1000);
-    const secsFromSS=Math.max(0,nowSec-SS_TS);
-    // Add 1000 block buffer to not miss edge blocks
-    const blocksBack=Math.ceil(secsFromSS/5.6)+1000;
-    const fromBlock=Math.max(1,latestBlock-blocksBack);
 
-    const totalChunks=Math.ceil((latestBlock-fromBlock+1)/CHUNK);
-    log('Latest block: '+latestBlock+' | Season start block ~'+fromBlock+' | '+blocksBack+' blocks | '+totalChunks+' chunks');
-    setSt('Syncing... 0/'+totalChunks,1);
-
-    // Fetch buys and sells sequentially with progress updates
-    // (parallel would be faster but risks rate-limiting)
-    const buyFilter={address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,null]};
-    const sellFilter={address:CTR,topics:[TRANSFER_TOPIC,null,LP_PADDED]};
-
-    let done=0;
-    const buyLogs=[];
-    const sellLogs=[];
-
-    // Interleave buy and sell chunks so progress is steady
-    let cur=fromBlock;
-    while(cur<=latestBlock){
-      const end=Math.min(cur+CHUNK-1,latestBlock);
-      const f='0x'+cur.toString(16);
-      const t='0x'+end.toString(16);
-      try{
-        const [bc,sc]=await Promise.all([
-          rpcCall('eth_getLogs',[{...buyFilter,fromBlock:f,toBlock:t}]),
-          rpcCall('eth_getLogs',[{...sellFilter,fromBlock:f,toBlock:t}])
-        ]);
-        if(Array.isArray(bc))buyLogs.push(...bc);
-        if(Array.isArray(sc))sellLogs.push(...sc);
-      }catch(e){
-        log('Chunk '+cur+'-'+end+' err: '+e.message.slice(0,80));
+    let fromBlock;
+    if(lastFetchedBlock===0){
+      // First load: full season history
+      const secsFromSS=Math.max(0,nowSec-SS_TS);
+      const blocksBack=Math.ceil(secsFromSS/5.6)+500;
+      fromBlock=Math.max(1,latestBlock-blocksBack);
+      log('Full sync: blocks '+fromBlock+' to '+latestBlock+' (~'+Math.ceil((latestBlock-fromBlock+1)/CHUNK)+' chunks each pass)');
+    }else{
+      fromBlock=lastFetchedBlock+1;
+      if(fromBlock>latestBlock){
+        log('No new blocks (latest='+latestBlock+')');
+        setSt('LIVE · Cronos RPC',1);
+        return;
       }
-      done++;
-      cur=end+1;
-      setSt('Syncing... '+done+'/'+totalChunks,1);
-      // Yield to browser every chunk
-      await new Promise(r=>setTimeout(r,0));
+      log('Incremental: '+fromBlock+' to '+latestBlock+' ('+(latestBlock-fromBlock+1)+' blocks)');
     }
 
-    log('Done: '+buyLogs.length+' buys, '+sellLogs.length+' sells across '+done+' chunks');
+    const totalChunksPerFilter=Math.ceil((latestBlock-fromBlock+1)/CHUNK);
+    // Phase 1: buys
+    setSt('Syncing buys... 0/'+totalChunksPerFilter,1);
+    const buyFilter={address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,null]};
+    const buyLogs=await fetchLogsChunked(buyFilter,fromBlock,latestBlock,'BUY',(d,t)=>{
+      setSt('Syncing buys... '+d+'/'+t,1);
+    });
+    // Phase 2: sells (separate pass, after buys fully done)
+    setSt('Syncing sells... 0/'+totalChunksPerFilter,1);
+    const sellFilter={address:CTR,topics:[TRANSFER_TOPIC,null,LP_PADDED]};
+    const sellLogs=await fetchLogsChunked(sellFilter,fromBlock,latestBlock,'SELL',(d,t)=>{
+      setSt('Syncing sells... '+d+'/'+t,1);
+    });
 
-    if(!buyLogs.length&&!sellLogs.length){
+    // Merge into cache (deduplication by hash+type)
+    let newCount=0;
+    buyLogs.forEach(l=>{
+      const k=l.transactionHash+':buy';
+      if(!logCache.has(k)){logCache.set(k,{...l,_type:'buy'});newCount++;}
+    });
+    sellLogs.forEach(l=>{
+      const k=l.transactionHash+':sell';
+      if(!logCache.has(k)){logCache.set(k,{...l,_type:'sell'});newCount++;}
+    });
+
+    lastFetchedBlock=latestBlock;
+    log('Cache: '+logCache.size+' total logs (+'+newCount+' new). Buys fetched: '+buyLogs.length+', Sells: '+sellLogs.length);
+
+    if(logCache.size===0){
       setSt('No trades found',0);
       $('feedBody').innerHTML='<div class="tbe">No CTR trades found since season start.</div>';
       $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data</td></tr>';
-      jackpots=[];renderJackpots();
-      return;
+      jackpots=[];renderJackpots();return;
     }
 
-    // Convert logs to unified tx format
-    const allLogs=[...buyLogs,...sellLogs];
-    txs=allLogs.map(l=>{
+    // Rebuild txs from full log cache
+    txs=[...logCache.values()].map(l=>{
       const from='0x'+l.topics[1].slice(26).toLowerCase();
       const to='0x'+l.topics[2].slice(26).toLowerCase();
       const blockNum=parseInt(l.blockNumber,16);
-      // Timestamp: derive from block distance * avg block time
       const secsAgo=(latestBlock-blockNum)*5.6;
       const ts=Math.floor(nowSec-secsAgo);
       let value='0';
@@ -700,19 +722,16 @@ async function _fetchTx(){
     setSt('LIVE · Cronos RPC',1);
     await buildTrades();
     await proc();
-    buildJackpots();
-    renderFeed();
-    renderJackpots();
-    renderLB();
-    updCounts();
-    updPrizePool();
+    buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
 
   }catch(e){
-    log('RPC error: '+e.message);
+    log('Fatal RPC error: '+e.message);
     setSt('RPC error - retry 30s',0);
-    $('feedBody').innerHTML='<div class="tbe">RPC error. Auto-retry in 30s.</div>';
-    $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';
-    jackpots=[];renderJackpots();
+    if(logCache.size===0){
+      $('feedBody').innerHTML='<div class="tbe">RPC error. Auto-retry in 30s.</div>';
+      $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';
+      jackpots=[];renderJackpots();
+    }
   }
 }
 
@@ -958,7 +977,7 @@ function closeClaimModal(){$('claimModal').classList.remove('active')}
 $('claimModal').addEventListener('click',function(e){if(e.target===this)closeClaimModal()});
 $('claimWalletInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkClaims()});
 
-// === WALLET DASHBOARD - hybrid V1/V2 (RPC-based lookup with Blockscout fallback) ===
+// === WALLET DASHBOARD: uses trades already cached in memory, RPC-only for unknown wallets ===
 async function lookupWallet(){
   const inp=$('walletInput').value.trim().toLowerCase();
   if(!inp||!inp.startsWith('0x')||inp.length!==42){alert('Enter valid 42-char wallet');return}
@@ -968,7 +987,7 @@ async function lookupWallet(){
   let trader=tm[inp];
 
   if(!trader){
-    // Try cached trades first
+    // Try to build from already-loaded trades (fast path)
     const walletTrades=trades.filter(t=>t.trader===inp);
     if(walletTrades.length>0){
       let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0;
@@ -981,32 +1000,39 @@ async function lookupWallet(){
       const now=Date.now()/1e3;const sl=SD*864e2;
       const hb=1+(Math.min(now-ft,sl)/sl)*.5;
       trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n:walletTrades.length,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
-    } else {
-      // Fetch from RPC only
-      log('Fetching wallet via RPC for '+inp.slice(0,10)+'...');
+      log('Built from cache: score '+Math.round(trader.fs));
+    }else{
+      // Wallet not in loaded trades - query RPC sequentially (no parallel)
+      log('Wallet not in cache, querying RPC...');
       try{
-        const latestHex=await rpcCall('eth_blockNumber',[]);
+        const latestHex=await rpcCallRetry('eth_blockNumber',[]);
         const latestBlock=parseInt(latestHex,16);
         const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS_TS);
-        const blocksBack=Math.ceil(secsFromSS/5.6)+1000;
+        const blocksBack=Math.ceil(secsFromSS/5.6)+500;
         const fromBlock=Math.max(1,latestBlock-blocksBack);
         const walletPadded='0x'+inp.slice(2).padStart(64,'0');
-        const [buys,sells]=await Promise.all([
-          fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,walletPadded]},fromBlock,latestBlock),
-          fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,walletPadded,LP_PADDED]},fromBlock,latestBlock)
-        ]);
+        // Sequential: buys first, then sells
+        const buys=await fetchLogsChunked(
+          {address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,walletPadded]},
+          fromBlock,latestBlock,'W-BUY',null
+        );
+        const sells=await fetchLogsChunked(
+          {address:CTR,topics:[TRANSFER_TOPIC,walletPadded,LP_PADDED]},
+          fromBlock,latestBlock,'W-SELL',null
+        );
         let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0,n=0;
+        const nowSec=Math.floor(Date.now()/1000);
         const processLog=(l,isBuy)=>{
           const blockNum=parseInt(l.blockNumber,16);
-          const ts=Math.floor(Date.now()/1000-(latestBlock-blockNum)*5.6);
+          const ts=Math.floor(nowSec-(latestBlock-blockNum)*5.6);
           if(ts<SS_TS)return;
           const val=Number(BigInt(l.data||'0x0'))/Math.pow(10,DEC);
           const usd=val*price;
           if(isBuy){bV+=usd;bC+=val}else{sV+=usd;sC+=val}
           n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts);
         };
-        (buys||[]).forEach(l=>processLog(l,true));
-        (sells||[]).forEach(l=>processLog(l,false));
+        buys.forEach(l=>processLog(l,true));
+        sells.forEach(l=>processLog(l,false));
         if(n>0){
           const balC=await getCtrBalance(inp);
           const raw=(3*bV)+(1*sV);
@@ -1017,9 +1043,7 @@ async function lookupWallet(){
           const hb=1+(Math.min(now2-ft,sl)/sl)*.5;
           trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
           log('RPC wallet: '+n+' trades, score '+Math.round(trader.fs));
-        } else {
-          log('No CTR trades this season for wallet');
-        }
+        }else{log('No CTR trades this season for wallet');}
       }catch(e){log('Wallet RPC error: '+e.message);}
     }
   }
@@ -1042,8 +1066,6 @@ async function lookupWallet(){
 }
 $('walletInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupWallet()});
 
-function updCD(){
-  const now=new Date();const diff=Math.max(0,SE-now);
   $('cdD').textContent=String(Math.floor(diff/864e5)).padStart(2,'0');
   $('cdH').textContent=String(Math.floor(diff%864e5/36e5)).padStart(2,'0');
   $('cdM').textContent=String(Math.floor(diff%36e5/6e4)).padStart(2,'0');
