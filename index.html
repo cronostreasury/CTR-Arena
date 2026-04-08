@@ -647,6 +647,20 @@ async function batchCheckContracts(addrs) {
   }
 }
 
+// TX sender cache: maps txHash → sender address (the actual user wallet)
+const senderCache = new Map();
+
+async function getTxSender(hash) {
+  if (!hash) return null;
+  if (senderCache.has(hash)) return senderCache.get(hash);
+  try {
+    const tx = await rpcCall('eth_getTransactionByHash', [hash]);
+    const from = tx?.from?.toLowerCase() || null;
+    senderCache.set(hash, from);
+    return from;
+  } catch { senderCache.set(hash, null); return null; }
+}
+
 // CTR balance: batched
 const balCache = new Map();
 
@@ -781,22 +795,54 @@ async function _sync() {
     const rawTrades = [...logIndex.values()].filter(t => t.ts >= SS_TS);
     rawTrades.sort((a, b) => b.ts - a.ts || b.logIdx - a.logIdx);
 
-    // ---------- Phase 5: Batch contract-check all counterpart addresses ----------
-    const uniqueAddrs = [...new Set(rawTrades.map(t => t.counterpart))].filter(a => !EXCLUDED.has(a));
-    log('Checking ' + uniqueAddrs.length + ' unique addresses');
-    await batchCheckContracts(uniqueAddrs);
+    // ---------- Phase 5: Resolve trader address for each trade ----------
+    // Counterpart is often a router contract. In that case, look up the tx sender.
+    // Step 5a: batch-check all counterpart addresses
+    const uniqueCounterparts = [...new Set(rawTrades.map(t => t.counterpart))].filter(a => !EXCLUDED.has(a));
+    log('Checking ' + uniqueCounterparts.length + ' counterpart addresses');
+    await batchCheckContracts(uniqueCounterparts);
+
+    // Step 5b: for trades where counterpart is a contract, resolve tx sender
+    const needSenderHashes = new Set();
+    for (const t of rawTrades) {
+      const cp = t.counterpart;
+      if (EXCLUDED.has(cp) || codeCache.get(cp)) needSenderHashes.add(t.hash);
+    }
+    log('Resolving ' + needSenderHashes.size + ' tx senders (router trades)');
+    // Batch fetch senders with limited concurrency
+    const hashArr = [...needSenderHashes];
+    const SBATCH = 15;
+    for (let i = 0; i < hashArr.length; i += SBATCH) {
+      await Promise.allSettled(hashArr.slice(i, i + SBATCH).map(getTxSender));
+      if (i + SBATCH < hashArr.length) await sleep(100);
+    }
+
+    // Step 5c: batch contract-check all resolved senders
+    const senderAddrs = [...new Set(hashArr.map(h => senderCache.get(h)).filter(a => a && !EXCLUDED.has(a) && !codeCache.has(a)))];
+    if (senderAddrs.length) await batchCheckContracts(senderAddrs);
 
     // ---------- Phase 6: Filter to user trades ----------
     trades = [];
     for (const t of rawTrades) {
-      const addr = t.counterpart;
-      if (EXCLUDED.has(addr)) continue;
-      if (codeCache.get(addr)) continue; // skip contracts
+      let trader = null;
+      const cp = t.counterpart;
+
+      // Try counterpart first (direct transfer to user)
+      if (!EXCLUDED.has(cp) && !codeCache.get(cp)) {
+        trader = cp;
+      }
+      // Fallback: tx sender (when counterpart is router)
+      if (!trader) {
+        const sender = senderCache.get(t.hash);
+        if (sender && !EXCLUDED.has(sender) && !codeCache.get(sender)) trader = sender;
+      }
+      if (!trader) continue;
+
       trades.push({
         hash: t.hash,
         ts: t.ts,
         type: t.type,
-        trader: addr,
+        trader,
         ctr: t.ctr,
         usd: t.ctr * price
       });
