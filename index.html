@@ -614,7 +614,7 @@ async function fetchLogsChunked(filter,fromBlock,toBlock){
   return allLogs;
 }
 
-// === MAIN FETCH WITH fetchInProgress GUARD (V2) + V1 RPC logic ===
+// === MAIN FETCH: Cronos RPC only, no fallback, full season history ===
 async function fetchTx(){
   if(fetchInProgress){log('Fetch already running, skipping');return;}
   fetchInProgress=true;
@@ -622,74 +622,98 @@ async function fetchTx(){
 }
 
 async function _fetchTx(){
-  // PRIMARY: Blockscout Explorer API
   try{
-    log('Trying Blockscout...');
-    const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=2000&sort=desc';
-    const r=await fetchJson('https://cronos.org/explorer/api'+q,{},20000);
-    if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-      log('Blockscout OK - '+r.result.length+' txs');
-      setSt('LIVE · Blockscout',1);
-      txs=r.result;
-      await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
-      return;
-    }
-    log('Blockscout empty - trying RPC...');
-  }catch(e){log('Blockscout fail: '+e.message+' - trying RPC...');}
-
-  // SECONDARY: Chunked eth_getLogs via correct Cronos RPC (V1 logic)
-  try{
-    log('Cronos RPC eth_getLogs (chunked)...');
+    setSt('Syncing...',1);
+    log('Fetching block number...');
     const latestHex=await rpcCall('eth_blockNumber',[]);
     const latestBlock=parseInt(latestHex,16);
-    const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS_TS);
-    const blocksBack=Math.min(Math.ceil(secsFromSS/5.6)+500,200000);
+
+    // Calculate exact block range from season start
+    // Cronos avg ~5.6s/block
+    const nowSec=Math.floor(Date.now()/1000);
+    const secsFromSS=Math.max(0,nowSec-SS_TS);
+    // Add 1000 block buffer to not miss edge blocks
+    const blocksBack=Math.ceil(secsFromSS/5.6)+1000;
     const fromBlock=Math.max(1,latestBlock-blocksBack);
-    log('Scanning '+blocksBack+' blocks in ~'+Math.ceil(blocksBack/CHUNK)+' chunks...');
 
-    const [buyLogs,sellLogs]=await Promise.all([
-      fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,null]},fromBlock,latestBlock),
-      fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,null,LP_PADDED]},fromBlock,latestBlock)
-    ]);
-    log('RPC: '+buyLogs.length+' buys, '+sellLogs.length+' sells');
+    const totalChunks=Math.ceil((latestBlock-fromBlock+1)/CHUNK);
+    log('Latest block: '+latestBlock+' | Season start block ~'+fromBlock+' | '+blocksBack+' blocks | '+totalChunks+' chunks');
+    setSt('Syncing... 0/'+totalChunks,1);
 
+    // Fetch buys and sells sequentially with progress updates
+    // (parallel would be faster but risks rate-limiting)
+    const buyFilter={address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,null]};
+    const sellFilter={address:CTR,topics:[TRANSFER_TOPIC,null,LP_PADDED]};
+
+    let done=0;
+    const buyLogs=[];
+    const sellLogs=[];
+
+    // Interleave buy and sell chunks so progress is steady
+    let cur=fromBlock;
+    while(cur<=latestBlock){
+      const end=Math.min(cur+CHUNK-1,latestBlock);
+      const f='0x'+cur.toString(16);
+      const t='0x'+end.toString(16);
+      try{
+        const [bc,sc]=await Promise.all([
+          rpcCall('eth_getLogs',[{...buyFilter,fromBlock:f,toBlock:t}]),
+          rpcCall('eth_getLogs',[{...sellFilter,fromBlock:f,toBlock:t}])
+        ]);
+        if(Array.isArray(bc))buyLogs.push(...bc);
+        if(Array.isArray(sc))sellLogs.push(...sc);
+      }catch(e){
+        log('Chunk '+cur+'-'+end+' err: '+e.message.slice(0,80));
+      }
+      done++;
+      cur=end+1;
+      setSt('Syncing... '+done+'/'+totalChunks,1);
+      // Yield to browser every chunk
+      await new Promise(r=>setTimeout(r,0));
+    }
+
+    log('Done: '+buyLogs.length+' buys, '+sellLogs.length+' sells across '+done+' chunks');
+
+    if(!buyLogs.length&&!sellLogs.length){
+      setSt('No trades found',0);
+      $('feedBody').innerHTML='<div class="tbe">No CTR trades found since season start.</div>';
+      $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data</td></tr>';
+      jackpots=[];renderJackpots();
+      return;
+    }
+
+    // Convert logs to unified tx format
     const allLogs=[...buyLogs,...sellLogs];
-    if(allLogs.length){
-      txs=allLogs.map(l=>{
-        const from='0x'+l.topics[1].slice(26).toLowerCase();
-        const to='0x'+l.topics[2].slice(26).toLowerCase();
-        const blockNum=parseInt(l.blockNumber,16);
-        const secsAgo=(latestBlock-blockNum)*5.6;
-        const ts=Math.floor(Date.now()/1000-secsAgo);
-        let value='0';
-        try{value=String(Number(BigInt(l.data||'0x0')));}catch(e){}
-        return{hash:l.transactionHash,from,to,value,timeStamp:String(ts)};
-      });
-      txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
-      setSt('LIVE · Cronos RPC',1);
-      await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
-      return;
-    }
-    log('RPC returned 0 logs - trying CronosScan...');
-  }catch(e){log('RPC error: '+e.message+' - trying CronosScan...');}
+    txs=allLogs.map(l=>{
+      const from='0x'+l.topics[1].slice(26).toLowerCase();
+      const to='0x'+l.topics[2].slice(26).toLowerCase();
+      const blockNum=parseInt(l.blockNumber,16);
+      // Timestamp: derive from block distance * avg block time
+      const secsAgo=(latestBlock-blockNum)*5.6;
+      const ts=Math.floor(nowSec-secsAgo);
+      let value='0';
+      try{value=String(Number(BigInt(l.data||'0x0')));}catch(e){}
+      return{hash:l.transactionHash,from,to,value,timeStamp:String(ts)};
+    });
+    txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
 
-  // TERTIARY: CronosScan (from V1)
-  try{
-    const q='?module=account&action=tokentx&address='+LP+'&contractaddress='+CTR+'&page=1&offset=1000&sort=desc';
-    const r=await fetchJson('https://api.cronoscan.com/api'+q,{},20000);
-    if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-      log('CronosScan OK - '+r.result.length+' txs');
-      setSt('LIVE · CronosScan',1);
-      txs=r.result;
-      await buildTrades();await proc();buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
-      return;
-    }
-  }catch(ex){log('CronosScan fail: '+ex.message);}
+    setSt('LIVE · Cronos RPC',1);
+    await buildTrades();
+    await proc();
+    buildJackpots();
+    renderFeed();
+    renderJackpots();
+    renderLB();
+    updCounts();
+    updPrizePool();
 
-  setSt('No data - retry 30s',0);
-  $('feedBody').innerHTML='<div class="tbe">Could not fetch trades. Auto-retry in 30s.</div>';
-  $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';
-  jackpots=[];renderJackpots();
+  }catch(e){
+    log('RPC error: '+e.message);
+    setSt('RPC error - retry 30s',0);
+    $('feedBody').innerHTML='<div class="tbe">RPC error. Auto-retry in 30s.</div>';
+    $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';
+    jackpots=[];renderJackpots();
+  }
 }
 
 async function fetchDex(){
@@ -958,13 +982,13 @@ async function lookupWallet(){
       const hb=1+(Math.min(now-ft,sl)/sl)*.5;
       trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n:walletTrades.length,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
     } else {
-      // Fetch from RPC (V1 approach)
+      // Fetch from RPC only
       log('Fetching wallet via RPC for '+inp.slice(0,10)+'...');
       try{
         const latestHex=await rpcCall('eth_blockNumber',[]);
         const latestBlock=parseInt(latestHex,16);
         const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS_TS);
-        const blocksBack=Math.min(Math.ceil(secsFromSS/5.6)+500,200000);
+        const blocksBack=Math.ceil(secsFromSS/5.6)+1000;
         const fromBlock=Math.max(1,latestBlock-blocksBack);
         const walletPadded='0x'+inp.slice(2).padStart(64,'0');
         const [buys,sells]=await Promise.all([
@@ -989,43 +1013,14 @@ async function lookupWallet(){
           const awBase=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
           const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;
           const aw=awBase*holdRatio;
-          const now=Date.now()/1e3;const sl=SD*864e2;
-          const hb=1+(Math.min(now-ft,sl)/sl)*.5;
+          const now2=Date.now()/1e3;const sl=SD*864e2;
+          const hb=1+(Math.min(now2-ft,sl)/sl)*.5;
           trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
-          log('RPC wallet lookup: '+n+' trades, score '+Math.round(trader.fs));
+          log('RPC wallet: '+n+' trades, score '+Math.round(trader.fs));
         } else {
-          // Fallback: Blockscout
-          log('RPC found 0 - trying Blockscout for wallet...');
-          try{
-            const q='?module=account&action=tokentx&address='+inp+'&contractaddress='+CTR+'&page=1&offset=500&sort=desc';
-            const r=await fetchJson('https://cronos.org/explorer/api'+q,{},20000);
-            if(r?.status==='1'&&Array.isArray(r.result)&&r.result.length){
-              const lp=LP.toLowerCase();
-              let bV2=0,sV2=0,bC2=0,sC2=0,ft2=Infinity,lt2=0,n2=0;
-              r.result.forEach(tx=>{
-                const ts=parseInt(tx.timeStamp||'0');if(ts<SS_TS)return;
-                const f=(tx.from||'').toLowerCase();const t=(tx.to||'').toLowerCase();
-                const isBuy=f===lp&&t===inp;const isSell=f===inp&&t===lp;
-                if(!isBuy&&!isSell)return;
-                let val=0;try{val=Number(BigInt(tx.value||'0'))/Math.pow(10,DEC);}catch(e){val=0;}
-                const usd=val*price;lt2=Math.max(lt2,ts);ft2=Math.min(ft2,ts);n2++;
-                if(isBuy){bV2+=usd;bC2+=val}else{sV2+=usd;sC2+=val}
-              });
-              if(n2>0){
-                const balC=await getCtrBalance(inp);
-                const raw=(3*bV2)+(1*sV2);
-                const awBase=bV2>0?Math.max(Math.min((bV2-sV2)/bV2,1),0):0;
-                const holdRatio=bC2>0?Math.max(Math.min(balC/bC2,1),0):0;
-                const aw=awBase*holdRatio;
-                const now=Date.now()/1e3;const sl=SD*864e2;
-                const hb=1+(Math.min(now-ft2,sl)/sl)*.5;
-                trader={addr:inp,bV:bV2,sV:sV2,bC:bC2,sC:sC2,balC,ft:ft2,lt:lt2,n:n2,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
-                log('Blockscout wallet: '+n2+' trades, score '+Math.round(trader.fs));
-              }
-            }
-          }catch(ex){log('Blockscout wallet fail: '+ex.message);}
+          log('No CTR trades this season for wallet');
         }
-      }catch(e){log('Wallet lookup error: '+e.message);}
+      }catch(e){log('Wallet RPC error: '+e.message);}
     }
   }
 
