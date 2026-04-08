@@ -688,11 +688,11 @@ async function _fetchTx(){
     // Merge into cache (deduplication by hash+type)
     let newCount=0;
     buyLogs.forEach(l=>{
-      const k=l.transactionHash+':buy';
+      const k=l.transactionHash+':'+(l.logIndex||'0x0')+':buy';
       if(!logCache.has(k)){logCache.set(k,{...l,_type:'buy'});newCount++;}
     });
     sellLogs.forEach(l=>{
-      const k=l.transactionHash+':sell';
+      const k=l.transactionHash+':'+(l.logIndex||'0x0')+':sell';
       if(!logCache.has(k)){logCache.set(k,{...l,_type:'sell'});newCount++;}
     });
 
@@ -715,7 +715,12 @@ async function _fetchTx(){
       const ts=Math.floor(nowSec-secsAgo);
       let value='0';
       try{value=String(Number(BigInt(l.data||'0x0')));}catch(e){}
-      return{hash:l.transactionHash,from,to,value,timeStamp:String(ts)};
+      return{
+        hash:l.transactionHash,
+        logIndex:parseInt(l.logIndex||'0x0',16),
+        type:l._type||null,
+        from,to,value,timeStamp:String(ts)
+      };
     });
     txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
 
@@ -768,35 +773,33 @@ async function getCtrBalance(addr){
 
 async function buildTrades(){
   const lp=LP.toLowerCase();
-  const grouped=new Map();
   let skippedTime=0,skippedLp=0;
+  const rawLogs=[];
 
   txs.forEach((tx,i)=>{
     const f=(tx.from||'').toLowerCase();
     const t=(tx.to||'').toLowerCase();
     const ts=parseInt(tx.timeStamp||'0');
     if(!ts||ts<SS_TS){skippedTime++;return;}
-    const isBuy=f===lp;
-    const isSell=t===lp;
+    const hintedType=tx.type==='buy'||tx.type==='sell'?tx.type:null;
+    const isBuy=hintedType?hintedType==='buy':f===lp;
+    const isSell=hintedType?hintedType==='sell':t===lp;
     if(!isBuy&&!isSell){skippedLp++;return;}
     const counterpart=isBuy?t:f;
     const hash=(tx.hash||tx.transactionHash||('nohash-'+i)).toLowerCase();
-    const key=hash+':'+(isBuy?'buy':'sell');
+    const logIndex=Number.isFinite(tx.logIndex)?tx.logIndex:i;
     let val=0;
     try{val=Number(BigInt(tx.value||'0'))/Math.pow(10,DEC);}catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
-    if(!grouped.has(key))grouped.set(key,{hash,ts,type:isBuy?'buy':'sell',counterparts:new Set(),ctr:0});
-    const g=grouped.get(key);g.ts=Math.max(g.ts,ts);g.counterparts.add(counterpart);g.ctr+=val;
+    rawLogs.push({hash,logIndex,ts,type:isBuy?'buy':'sell',counterpart,ctr:val});
   });
 
-  log('Skipped: '+skippedTime+' (before season), '+skippedLp+' (not LP). Grouped: '+grouped.size);
-  const raw=[...grouped.values()].sort((a,b)=>b.ts-a.ts);
+  log('Skipped: '+skippedTime+' (before season), '+skippedLp+' (not LP). Candidate logs: '+rawLogs.length);
+  const raw=rawLogs.sort((a,b)=>b.ts-a.ts||b.logIndex-a.logIndex);
   const out=[];
   for(const g of raw){
     let trader=null;
-    for(const c of g.counterparts){
-      if(!c||EX.has(c)||NON_USER_ADDRS.has(c))continue;
-      if(!(await isContract(c))){trader=c;break;}
-    }
+    const c=(g.counterpart||'').toLowerCase();
+    if(c&&!EX.has(c)&&!NON_USER_ADDRS.has(c)&&!(await isContract(c)))trader=c;
     if(!trader&&g.hash&&!g.hash.startsWith('nohash-')){
       const sender=await getTxSender(g.hash);
       if(sender&&!EX.has(sender)&&!NON_USER_ADDRS.has(sender)&&!(await isContract(sender)))trader=sender;
@@ -1066,11 +1069,15 @@ async function lookupWallet(){
 }
 $('walletInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupWallet()});
 
+function updCD(){
+  const now=new Date();
+  const diff=Math.max(0,SE-now);
   $('cdD').textContent=String(Math.floor(diff/864e5)).padStart(2,'0');
   $('cdH').textContent=String(Math.floor(diff%864e5/36e5)).padStart(2,'0');
   $('cdM').textContent=String(Math.floor(diff%36e5/6e4)).padStart(2,'0');
   $('cdS').textContent=String(Math.floor(diff%6e4/1e3)).padStart(2,'0');
-  const el=Math.max(0,now-SS);const pct=Math.min(100,el/(SE-SS)*100);
+  const el=Math.max(0,now-SS);
+  const pct=Math.min(100,el/(SE-SS)*100);
   $('seasonFill').style.width=pct+'%';
   $('dayNum').textContent=Math.min(SD,Math.ceil(el/864e5));
   $('seasonPct').textContent=pct.toFixed(0)+'%';
