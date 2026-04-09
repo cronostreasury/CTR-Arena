@@ -468,7 +468,17 @@ if(d<100){cx.beginPath();cx.moveTo(pts[i].x,pts[i].y);cx.lineTo(pts[j].x,pts[j].
 requestAnimationFrame(anim)}anim();
 
 // === CONSTANTS ===
-const RPC='https://evm.cronos.org';
+// Multiple RPCs with auto-fallback on failure/CORS
+const RPC_LIST=[
+  'https://evm.cronos.org',
+  'https://cronos-evm-rpc.publicnode.com',
+  'https://cronos.drpc.org',
+  'https://rpc.vvs.finance',
+  'https://cronos-rpc.elk.finance',
+  'https://cronos.blockpi.network/v1/rpc/public'
+];
+let rpcIndex=0;
+let RPC=RPC_LIST[0];
 const CTR='0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC';
 const LP='0xf118aa245b0627b4752607620d0048b492a5f4fb';
 const TAX_WALLET='0x96A6cd06338eFE754f200Aba9fF07788c16E5F20';
@@ -534,10 +544,26 @@ async function fetchJson(url,opts={},timeoutMs=20000){
 }
 
 async function rpcCall(method,params){
-  const res=await fetchJson(RPC,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({jsonrpc:'2.0',method,params,id:Date.now()})},20000);
-  if(res.error)throw new Error(res.error.message||'RPC error');
-  return res.result;
+  // Try current RPC first, then rotate through others on failure
+  const startIdx=rpcIndex;
+  for(let attempt=0;attempt<RPC_LIST.length;attempt++){
+    const url=RPC_LIST[(startIdx+attempt)%RPC_LIST.length];
+    try{
+      const res=await fetchJson(url,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({jsonrpc:'2.0',method,params,id:Date.now()})},15000);
+      if(res.error)throw new Error(res.error.message||'RPC error');
+      // This RPC works, stick with it
+      rpcIndex=(startIdx+attempt)%RPC_LIST.length;
+      RPC=RPC_LIST[rpcIndex];
+      return res.result;
+    }catch(e){
+      if(attempt<RPC_LIST.length-1){
+        log('RPC '+url.split('//')[1].split('/')[0]+' failed, trying next...');
+      }else{
+        throw e; // all RPCs failed
+      }
+    }
+  }
 }
 
 function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
@@ -580,7 +606,7 @@ async function getCtrBalance(addr){
   try{
     const data='0x70a08231000000000000000000000000'+a.slice(2);
     const res=await fetchJson(RPC,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:CTR,data},'latest'],id:1})});
+      body:JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:CTR,data},'latest'],id:Date.now()})});
     const raw=res?.result||'0x0';
     const bal=Number(BigInt(raw))/Math.pow(10,DEC);
     balanceCache[a]=Number.isFinite(bal)?bal:0;return balanceCache[a];
@@ -617,6 +643,7 @@ async function _fetchTx(){
     setSt('Syncing...',1);
     const latestHex=await rpcCallRetry('eth_blockNumber',[]);
     const latestBlock=parseInt(latestHex,16);
+    log('Connected to '+RPC.split('//')[1].split('/')[0]+' (block '+latestBlock+')');
     const nowSec=Math.floor(Date.now()/1000);
 
     let fromBlock;
@@ -628,7 +655,7 @@ async function _fetchTx(){
     }else{
       fromBlock=lastFetchedBlock+1;
       if(fromBlock>latestBlock){
-        log('No new blocks');setSt('LIVE · Cronos RPC',1);return;
+        log('No new blocks');setSt('LIVE · '+RPC.split('//')[1].split('/')[0],1);return;
       }
       log('Incremental: '+fromBlock+' to '+latestBlock+' ('+(latestBlock-fromBlock+1)+' blocks)');
     }
@@ -678,7 +705,7 @@ async function _fetchTx(){
     setSt('Scoring wallets...',1);
     await proc();
     buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
-    setSt('LIVE · Cronos RPC',1);
+    setSt('LIVE · '+RPC.split('//')[1].split('/')[0],1);
 
   }catch(e){
     log('Fatal RPC error: '+e.message);
