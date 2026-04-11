@@ -17,7 +17,6 @@
   --text:#e8e6f0;--text2:#94a3b8;--text3:#64748b;--text4:#3d4f6f;
   --border:#1e2d4a;--border2:#2a3f66;
   --glass:rgba(17,24,39,.75);
-  --pack:#7c3aed;--pack2:#6d28d9;--pack-glow:rgba(124,58,237,.15);
 }
 html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#1e2d4a #0b0f1a}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
@@ -40,8 +39,6 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .nav-links{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
 .nav-links a{font-size:13px;color:var(--text3);transition:color .2s;font-weight:500}
 .nav-links a:hover{color:var(--accent)}
-.nav-pack-link{font-size:12px !important;color:var(--bg) !important;background:linear-gradient(135deg,var(--pack),var(--pack2));padding:6px 14px;border-radius:8px;font-weight:700 !important;letter-spacing:.01em;transition:all .3s !important}
-.nav-pack-link:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,58,237,.35);color:var(--bg) !important}
 .cta-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);border:none;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;padding:9px 22px;border-radius:8px;cursor:pointer;transition:all .3s;letter-spacing:.01em;flex-shrink:0}
 .cta-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(212,168,67,.35)}
 
@@ -60,7 +57,7 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .hero-chip .dot::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--green);opacity:.3;animation:ring 2s ease-out infinite}
 @keyframes ring{to{transform:scale(2.5);opacity:0}}
 .hero-chip span{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.hero h1{font-family:'Manrope',sans-serif;font-weight:800;font-size:clamp(40px,5.5vw,64px);line-height:1.1;letter-spacing:-.04em;margin-bottom:18px;animation:fu .5s ease-out .1s both}
+.hero h1{font-family:'Manrope',sans-serif;font-weight:800;font-size:clamp(40px,5.5vw,64px);line-height:1.15;letter-spacing:-.04em;margin-bottom:18px;animation:fu .5s ease-out .1s both}
 .hero h1 .g{display:block;background:linear-gradient(135deg,var(--accent),#4fd1c5,var(--gold));background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:sh 5s ease-in-out infinite}
 @keyframes sh{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 .hero p{font-size:16px;color:var(--text2);max-width:440px;margin-bottom:32px;animation:fu .5s ease-out .2s both}
@@ -75,17 +72,17 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 @keyframes fu{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
 
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;border-radius:16px;overflow:hidden;border:1px solid var(--border);margin-top:48px;animation:fu .5s ease-out .4s both}
-.st{background:var(--bg2);padding:22px 14px;text-align:center;transition:background .3s}
+.st{background:var(--bg2);padding:24px 14px;text-align:center;transition:background .3s}
 .st:hover{background:var(--bg3)}
 .st .sl{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em;margin-bottom:6px}
-.st .sv{font-family:'Manrope',sans-serif;font-weight:800;font-size:22px}
-.st .ss{font-family:'DM Mono',monospace;font-size:10px;margin-top:4px}
+.st .sv{font-family:'Manrope',sans-serif;font-weight:800;font-size:22px;line-height:1.3}
+.st .ss{font-family:'DM Mono',monospace;font-size:10px;margin-top:4px;line-height:1.4}
 .st .sv.ld{opacity:.2;animation:lp 1.5s ease-in-out infinite}
 @keyframes lp{0%,100%{opacity:.2}50%{opacity:.5}}
 
 .cd-sec{margin:44px 0;text-align:center}
 .cd-wrap{display:inline-flex;gap:12px;align-items:center;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px 44px}
-.cd-n{font-family:'Manrope',sans-serif;font-weight:800;font-size:42px;line-height:1;width:68px;height:68px;display:flex;align-items:center;justify-content:center;background:var(--bg);border:1px solid var(--border2);border-radius:12px;color:var(--accent)}
+.cd-n{font-family:'Manrope',sans-serif;font-weight:800;font-size:42px;line-height:1.2;width:68px;height:68px;display:flex;align-items:center;justify-content:center;background:var(--bg);border:1px solid var(--border2);border-radius:12px;color:var(--accent)}
 .cd-l{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);margin-top:6px;text-transform:uppercase;letter-spacing:.12em;text-align:center}
 .cd-c{font-family:'Manrope',sans-serif;font-size:32px;color:var(--text4);animation:blink 1s step-end infinite}
 @keyframes blink{50%{opacity:0}}
@@ -120,7 +117,7 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .rkn{background:var(--bg3);color:var(--text4)}
 .wc{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--accent);word-break:break-all;max-width:340px;opacity:.85}
 .wc a{color:inherit;text-decoration:none}.wc a:hover{opacity:1;color:var(--text)}
-.sc{font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:var(--gold)}
+.sc{font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:var(--gold);line-height:1.3}
 .vb{color:var(--green);font-family:'DM Mono',monospace;font-size:11px}
 .vs{color:var(--red);font-family:'DM Mono',monospace;font-size:11px}
 .awb{width:56px;height:5px;background:var(--bg);border-radius:99px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
@@ -149,10 +146,10 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .jcard{background:linear-gradient(135deg,rgba(36,49,82,.9),rgba(17,24,39,.95));border:1px solid var(--border2);border-radius:22px;padding:24px;position:relative;overflow:hidden}
 .jcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--accent),var(--gold))}
 .jtop{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
-.jtitle{font-family:'Manrope',sans-serif;font-weight:800;font-size:42px;line-height:1;color:var(--gold)}
+.jtitle{font-family:'Manrope',sans-serif;font-weight:800;font-size:42px;line-height:1.2;color:var(--gold)}
 .jgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .jtile{background:rgba(11,15,26,.8);border:1px solid var(--border2);border-radius:14px;padding:14px;text-align:center}
-.jtile .jp{font-family:'Manrope',sans-serif;font-weight:800;font-size:36px;line-height:1}
+.jtile .jp{font-family:'Manrope',sans-serif;font-weight:800;font-size:36px;line-height:1.2}
 .jtile .jc{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);margin-top:6px}
 .jtile .jr{display:inline-flex;margin-top:8px;padding:3px 9px;border-radius:999px;font-family:'DM Mono',monospace;font-size:9px;font-weight:600}
 .jr.c{background:rgba(74,222,128,.12);color:var(--green)}.jr.u{background:rgba(100,255,218,.12);color:var(--accent)}.jr.r{background:rgba(212,168,67,.14);color:var(--gold)}.jr.e{background:rgba(249,115,22,.14);color:#fb923c}.jr.l{background:rgba(239,68,68,.16);color:#ff6b6b}
@@ -174,7 +171,7 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .ds::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .ds:nth-child(1)::before{background:var(--accent)}.ds:nth-child(2)::before{background:var(--green)}.ds:nth-child(3)::before{background:var(--gold)}.ds:nth-child(4)::before{background:var(--accent)}
 .ds .dl{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px}
-.ds .dv{font-family:'Manrope',sans-serif;font-weight:800;font-size:26px}
+.ds .dv{font-family:'Manrope',sans-serif;font-weight:800;font-size:26px;line-height:1.3}
 .ds:nth-child(1) .dv{color:var(--accent)}.ds:nth-child(2) .dv{color:var(--green)}.ds:nth-child(3) .dv{color:var(--gold)}.ds:nth-child(4) .dv{color:var(--accent)}
 
 .eg{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
@@ -184,7 +181,7 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .ec.e1::before{background:linear-gradient(90deg,var(--green),var(--accent))}.ec.e2::before{background:linear-gradient(90deg,var(--red),#f97316)}.ec.e3::before{background:linear-gradient(90deg,var(--gold),var(--accent))}
 .ec .ei{font-size:28px;margin-bottom:14px}
 .ec h4{font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px}
-.ec .em{font-family:'Manrope',sans-serif;font-weight:800;font-size:44px;line-height:1;margin:10px 0}
+.ec .em{font-family:'Manrope',sans-serif;font-weight:800;font-size:44px;line-height:1.15;margin:10px 0}
 .ec.e1 .em{color:var(--green)}.ec.e2 .em{color:var(--red)}.ec.e3 .em{color:var(--gold)}
 .ec p{font-size:13px;color:var(--text2);line-height:1.7}
 
@@ -208,7 +205,7 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .rc:hover{transform:translateY(-4px);border-color:var(--border2)}
 .rc .ri{font-size:40px;margin-bottom:14px}
 .rc h4{font-family:'Manrope',sans-serif;font-weight:700;font-size:17px;margin-bottom:4px}
-.rc .rp{font-family:'Manrope',sans-serif;font-weight:800;font-size:36px;color:var(--gold);margin:12px 0}
+.rc .rp{font-family:'Manrope',sans-serif;font-weight:800;font-size:36px;color:var(--gold);margin:12px 0;line-height:1.2}
 .rc p{font-size:13px;color:var(--text2);line-height:1.7}
 
 .claim-section{background:linear-gradient(135deg,rgba(212,168,67,.04),rgba(100,255,218,.04));border:1px solid rgba(212,168,67,.2);border-radius:22px;padding:32px;position:relative;overflow:hidden;margin-bottom:32px}
@@ -231,7 +228,7 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .claim-item:last-child{border:none}
 .claim-item-left{display:flex;flex-direction:column;gap:4px}
 .claim-item-type{font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:.1em}
-.claim-item-amount{font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;color:var(--gold)}
+.claim-item-amount{font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;color:var(--gold);line-height:1.3}
 .claim-item-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)}
 .claim-item-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);border:none;font-weight:700;font-size:11px;padding:8px 20px;border-radius:8px;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
 .claim-item-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(212,168,67,.3)}
@@ -300,7 +297,6 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
     <a href="#scoring">Scoring</a>
     <a href="#rewards">Rewards</a>
     <a href="#claim">Claim</a>
-    <a href="pack-season.html" class="nav-pack-link">PACK Season</a>
   </div>
   <button class="cta-btn" onclick="alert('Wallet connect coming Phase 2!')">Connect Wallet</button>
 </div></nav>
@@ -451,7 +447,7 @@ Final Score = Raw Points x Anti-Wash x Holding Bonus</span></div>
     </div>
   </section>
 
-  <footer><div class="fti"><div class="ftl">CTR · Cronos Treasury Reserve · Season 1<span class="ftc">Contract: 0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC</span></div><div class="ftlk"><a href="https://cronostreasury.github.io" target="_blank">Main Site</a><a href="https://dexscreener.com/cronos/0xf118aa245b0627b4752607620d0048b492a5f4fb" target="_blank">DexScreener</a><a href="https://cronostreasury.github.io/CTR-Governance/" target="_blank">Governance</a><a href="pack-season.html">PACK Season</a></div></div><div class="ftsrc">Data from <strong>Cronos RPC</strong> &amp; <strong>DexScreener</strong> · Auto-refresh 30s</div></footer>
+  <footer><div class="fti"><div class="ftl">CTR · Cronos Treasury Reserve · Season 1<span class="ftc">Contract: 0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC</span></div><div class="ftlk"><a href="https://cronostreasury.github.io" target="_blank">Main Site</a><a href="https://dexscreener.com/cronos/0xf118aa245b0627b4752607620d0048b492a5f4fb" target="_blank">DexScreener</a><a href="https://cronostreasury.github.io/CTR-Governance/" target="_blank">Governance</a></div></div><div class="ftsrc">Data from <strong>Cronos Explorer API</strong> &amp; <strong>DexScreener</strong> · Auto-refresh 30s</div></footer>
 </div>
 
 <script>
