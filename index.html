@@ -468,24 +468,17 @@ if(d<100){cx.beginPath();cx.moveTo(pts[i].x,pts[i].y);cx.lineTo(pts[j].x,pts[j].
 requestAnimationFrame(anim)}anim();
 
 // === CONSTANTS ===
-// Multiple RPCs with auto-fallback on failure/CORS
-const RPC_LIST=[
-  'https://evm.cronos.org',
-  'https://cronos-evm-rpc.publicnode.com',
-  'https://cronos.drpc.org',
-  'https://rpc.vvs.finance',
-  'https://cronos-rpc.elk.finance',
-  'https://cronos.blockpi.network/v1/rpc/public'
-];
-let rpcIndex=0;
-let RPC=RPC_LIST[0];
+const API_KEY='JhU1OvkEIUYYcBCnlfahIcPeu6DIGt7k';
 const CTR='0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC';
 const LP='0xf118aa245b0627b4752607620d0048b492a5f4fb';
 const TAX_WALLET='0x96A6cd06338eFE754f200Aba9fF07788c16E5F20';
 const PRIZE_WALLET='0x32bA7097fC2ce5b1A118Bf3347b492e414cB7C35';
 const EXP='https://explorer.cronos.org';
 const DEC=18,SD=30,TAX_RATE=0.10,JACKPOT_MIN_BUY=10;
-const CHUNK=1800;
+
+// RPC only for balance checks (fast single calls)
+const RPC_LIST=['https://evm.cronos.org','https://cronos-evm-rpc.publicnode.com','https://cronos.drpc.org','https://rpc.vvs.finance'];
+let rpcIdx=0;
 
 const EX=new Set([
   CTR,'0x96A6cd06338eFE754f200Aba9fF07788c16E5F20',
@@ -512,209 +505,159 @@ const JACKPOT_TIERS=[
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
 const SS_TS=SS.getTime()/1e3;
 const JACKPOT_TOTAL_WEIGHT=JACKPOT_TIERS.reduce((s,t)=>s+t.weight,0);
-const TRANSFER_TOPIC='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-const LP_PADDED='0x'+LP.slice(2).toLowerCase().padStart(64,'0');
 
-let price=0,txs=[],trades=[],tm={},lb=[],jackpots=[];
+let price=0,trades=[],tm={},lb=[],jackpots=[];
 let fetchInProgress=false;
-const contractCache={};
-const txSenderCache={};
 const balanceCache={};
 
 const dbg=document.getElementById('debugLog');
-// FIX #1: Don't auto-show debug panel. Toggle with Alt+D.
 let debugVisible=false;
-function log(m){
-  console.log('[CTR]',m);
-  if(dbg){dbg.innerHTML+=new Date().toLocaleTimeString()+' - '+m+'<br>';dbg.scrollTop=dbg.scrollHeight;}
-  if(debugVisible&&dbg)dbg.style.display='block';
-}
+function log(m){console.log('[CTR]',m);if(dbg){dbg.innerHTML+=new Date().toLocaleTimeString()+' '+m+'<br>';dbg.scrollTop=dbg.scrollHeight;}if(debugVisible&&dbg)dbg.style.display='block'}
 function fU(n){if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)}
 function fN(n){return n.toLocaleString('en-US',{maximumFractionDigits:0})}
 function fC(n){if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toFixed(0)}
 function tA(ts){const s=Math.floor((Date.now()-ts*1e3)/1e3);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<864e2)return Math.floor(s/3600)+'h ago';return Math.floor(s/864e2)+'d ago'}
 function $(id){return document.getElementById(id)}
+function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 function hashToPermille(hash){const h=(hash||'').replace(/^0x/,'').padEnd(64,'0');let acc=0;for(let i=0;i<12;i++)acc=(acc*17+parseInt(h[i],16))%1000;return acc}
 function jackpotRoll(hash){const roll=hashToPermille(hash);if(roll>=JACKPOT_TOTAL_WEIGHT)return null;let sum=0;for(const tier of JACKPOT_TIERS){sum+=tier.weight;if(roll<sum)return tier}return null}
 
-async function fetchJson(url,opts={},timeoutMs=20000){
-  const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),timeoutMs);
-  try{const r=await fetch(url,{...opts,signal:ctrl.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(t)}
-}
+// === EXPLORER API: fetch ALL CTR token transfers for LP pair in 1-3 calls ===
+// Etherscan-compatible format used by Cronos Explorer
+async function fetchTokenTransfers(){
+  const apis=[
+    {name:'Cronos Explorer',url:p=>`https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx?contractaddress=${CTR}&address=${LP}&page=${p}&offset=10000&sort=desc&apikey=${API_KEY}`},
+    {name:'BlockScout',url:p=>`https://cronos.org/explorer/api?module=account&action=tokentx&contractaddress=${CTR}&address=${LP}&page=${p}&offset=10000&sort=desc`}
+  ];
 
-async function rpcCall(method,params){
-  // Try current RPC first, then rotate through others on failure
-  const startIdx=rpcIndex;
-  for(let attempt=0;attempt<RPC_LIST.length;attempt++){
-    const url=RPC_LIST[(startIdx+attempt)%RPC_LIST.length];
+  for(const api of apis){
     try{
-      const res=await fetchJson(url,{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({jsonrpc:'2.0',method,params,id:Date.now()})},15000);
-      if(res.error)throw new Error(res.error.message||'RPC error');
-      // This RPC works, stick with it
-      rpcIndex=(startIdx+attempt)%RPC_LIST.length;
-      RPC=RPC_LIST[rpcIndex];
-      return res.result;
-    }catch(e){
-      if(attempt<RPC_LIST.length-1){
-        log('RPC '+url.split('//')[1].split('/')[0]+' failed, trying next...');
-      }else{
-        throw e; // all RPCs failed
+      log('Trying '+api.name+'...');
+      setSt('Connecting to '+api.name+'...',1);
+      // Fetch page 1
+      const r1=await fetch(api.url(1));
+      const d1=await r1.json();
+      let results=[];
+      if(d1.status==='1'&&Array.isArray(d1.result)&&d1.result.length>0){
+        results=d1.result;
+        log(api.name+' page 1: '+results.length+' transfers');
+        // If we got exactly 10000, there might be more
+        if(results.length>=10000){
+          setSt('Loading more from '+api.name+'...',1);
+          try{
+            const r2=await fetch(api.url(2));
+            const d2=await r2.json();
+            if(d2.status==='1'&&Array.isArray(d2.result)&&d2.result.length>0){
+              results=[...results,...d2.result];
+              log(api.name+' page 2: +'+d2.result.length);
+            }
+          }catch(e){log('Page 2 failed: '+e.message)}
+        }
+        return{source:api.name,data:results};
       }
+      // Try without status field (some APIs return data differently)
+      if(Array.isArray(d1.result)&&d1.result.length>0){
+        return{source:api.name,data:d1.result};
+      }
+      log(api.name+' returned 0 results (status='+d1.status+', msg='+d1.message+')');
+    }catch(e){
+      log(api.name+' failed: '+e.message);
     }
   }
+  return null;
 }
 
-function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-
-async function rpcCallRetry(method,params,retries=4){
-  for(let i=0;i<retries;i++){
-    try{return await rpcCall(method,params);}
-    catch(e){if(i===retries-1)throw e;await sleep(600*(i+1));}
-  }
-}
-
-// FIX #2: isContract with RPC failure = false (don't exclude real users on timeout)
-async function isContract(addr){
-  const a=(addr||'').toLowerCase();
-  if(!a)return true;
-  if(EX.has(a)||NON_USER_ADDRS.has(a))return true;
-  if(contractCache[a]!==undefined)return contractCache[a];
-  try{
-    const code=await rpcCall('eth_getCode',[a,'latest']);
-    const isC=code&&code!=='0x'&&code!=='0x0'&&code.length>4;
-    contractCache[a]=!!isC;return contractCache[a];
-  }catch(e){contractCache[a]=false;return false;}
-}
-
-async function getTxSender(hash){
-  const h=(hash||'').toLowerCase();
-  if(!h)return null;
-  if(txSenderCache[h]!==undefined)return txSenderCache[h];
-  try{
-    const tx=await rpcCallRetry('eth_getTransactionByHash',[h]);
-    const from=tx?.from?.toLowerCase()||null;
-    txSenderCache[h]=from;return from;
-  }catch(e){txSenderCache[h]=null;return null}
-}
-
-async function getCtrBalance(addr){
+// RPC only for balance checks
+async function rpcBalance(addr){
   const a=(addr||'').toLowerCase();if(!a)return 0;
   if(balanceCache[a]!==undefined)return balanceCache[a];
-  try{
-    const data='0x70a08231000000000000000000000000'+a.slice(2);
-    const res=await fetchJson(RPC,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:CTR,data},'latest'],id:Date.now()})});
-    const raw=res?.result||'0x0';
-    const bal=Number(BigInt(raw))/Math.pow(10,DEC);
-    balanceCache[a]=Number.isFinite(bal)?bal:0;return balanceCache[a];
-  }catch(e){balanceCache[a]=0;return 0}
-}
-
-let lastFetchedBlock=0;
-const logCache=new Map();
-
-async function fetchLogsChunked(filter,fromBlock,toBlock,label,progressCb){
-  const allLogs=[];
-  const total=Math.ceil((toBlock-fromBlock+1)/CHUNK);
-  let done=0,cur=fromBlock;
-  while(cur<=toBlock){
-    const end=Math.min(cur+CHUNK-1,toBlock);
+  const data='0x70a08231000000000000000000000000'+a.slice(2);
+  for(let i=0;i<RPC_LIST.length;i++){
+    const url=RPC_LIST[(rpcIdx+i)%RPC_LIST.length];
     try{
-      const chunk=await rpcCallRetry('eth_getLogs',[{...filter,fromBlock:'0x'+cur.toString(16),toBlock:'0x'+end.toString(16)}]);
-      if(Array.isArray(chunk))allLogs.push(...chunk);
-    }catch(e){log(label+' chunk '+cur+'-'+end+' failed: '+e.message.slice(0,60));}
-    done++;if(progressCb)progressCb(done,total);
-    cur=end+1;await sleep(180);
+      const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),10000);
+      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:CTR,data},'latest'],id:1}),signal:ctrl.signal});
+      clearTimeout(t);
+      const res=await r.json();
+      if(res.error)continue;
+      const raw=res?.result||'0x0';
+      const bal=Number(BigInt(raw))/Math.pow(10,DEC);
+      rpcIdx=(rpcIdx+i)%RPC_LIST.length;
+      balanceCache[a]=Number.isFinite(bal)?bal:0;
+      return balanceCache[a];
+    }catch(e){continue}
   }
-  return allLogs;
+  balanceCache[a]=0;return 0;
 }
 
+// === MAIN FETCH: Explorer API first, fast and complete ===
 async function fetchTx(){
-  if(fetchInProgress){log('Fetch already running, skipping');return;}
+  if(fetchInProgress){log('Fetch running, skip');return}
   fetchInProgress=true;
-  try{await _fetchTx();}finally{fetchInProgress=false;}
+  try{await _fetchTx();}finally{fetchInProgress=false}
 }
 
 async function _fetchTx(){
   try{
-    setSt('Syncing...',1);
-    const latestHex=await rpcCallRetry('eth_blockNumber',[]);
-    const latestBlock=parseInt(latestHex,16);
-    log('Connected to '+RPC.split('//')[1].split('/')[0]+' (block '+latestBlock+')');
-    const nowSec=Math.floor(Date.now()/1000);
-
-    let fromBlock;
-    if(lastFetchedBlock===0){
-      const secsFromSS=Math.max(0,nowSec-SS_TS);
-      const blocksBack=Math.ceil(secsFromSS/5.6)+500;
-      fromBlock=Math.max(1,latestBlock-blocksBack);
-      log('Full sync: blocks '+fromBlock+' to '+latestBlock+' (~'+Math.ceil((latestBlock-fromBlock+1)/CHUNK)+' chunks each pass)');
-    }else{
-      fromBlock=lastFetchedBlock+1;
-      if(fromBlock>latestBlock){
-        log('No new blocks');setSt('LIVE · '+RPC.split('//')[1].split('/')[0],1);return;
-      }
-      log('Incremental: '+fromBlock+' to '+latestBlock+' ('+(latestBlock-fromBlock+1)+' blocks)');
-    }
-
-    const totalChunksPerFilter=Math.ceil((latestBlock-fromBlock+1)/CHUNK);
-    setSt('Syncing buys... 0/'+totalChunksPerFilter,1);
-    const buyFilter={address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,null]};
-    const buyLogs=await fetchLogsChunked(buyFilter,fromBlock,latestBlock,'BUY',(d,t)=>{setSt('Syncing buys... '+d+'/'+t,1);});
-
-    setSt('Syncing sells... 0/'+totalChunksPerFilter,1);
-    const sellFilter={address:CTR,topics:[TRANSFER_TOPIC,null,LP_PADDED]};
-    const sellLogs=await fetchLogsChunked(sellFilter,fromBlock,latestBlock,'SELL',(d,t)=>{setSt('Syncing sells... '+d+'/'+t,1);});
-
-    let newCount=0;
-    buyLogs.forEach(l=>{const k=l.transactionHash+':'+(l.logIndex||'0x0')+':buy';if(!logCache.has(k)){logCache.set(k,{...l,_type:'buy'});newCount++;}});
-    sellLogs.forEach(l=>{const k=l.transactionHash+':'+(l.logIndex||'0x0')+':sell';if(!logCache.has(k)){logCache.set(k,{...l,_type:'sell'});newCount++;}});
-    lastFetchedBlock=latestBlock;
-    log('Cache: '+logCache.size+' total (+'+newCount+' new)');
-
-    if(logCache.size===0){
-      setSt('No trades found',0);
-      $('feedBody').innerHTML='<div class="tbe">No CTR trades found since season start.</div>';
+    setSt('Loading...',1);
+    const result=await fetchTokenTransfers();
+    if(!result||!result.data.length){
+      setSt('No data from APIs',0);
+      $('feedBody').innerHTML='<div class="tbe">Could not load trades. APIs may be temporarily unavailable.</div>';
       $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data</td></tr>';
-      jackpots=[];renderJackpots();return;
+      return;
     }
+    log(result.source+': '+result.data.length+' total transfers');
+    setSt('Processing '+result.data.length+' transfers...',1);
 
-    txs=[...logCache.values()].map(l=>{
-      const from='0x'+l.topics[1].slice(26).toLowerCase();
-      const to='0x'+l.topics[2].slice(26).toLowerCase();
-      const blockNum=parseInt(l.blockNumber,16);
-      const secsAgo=(latestBlock-blockNum)*5.6;
-      const ts=Math.floor(nowSec-secsAgo);
-      let value='0';
-      try{value=String(Number(BigInt(l.data||'0x0')));}catch(e){}
-      return{hash:l.transactionHash,logIndex:parseInt(l.logIndex||'0x0',16),type:l._type||null,from,to,value,timeStamp:String(ts)};
+    // Build trades directly from API data (no RPC needed!)
+    const lp=LP.toLowerCase();
+    const newTrades=[];
+    const seen=new Set();
+
+    result.data.forEach(tx=>{
+      const from=(tx.from||'').toLowerCase();
+      const to=(tx.to||'').toLowerCase();
+      const ts=parseInt(tx.timeStamp||'0');
+      if(!ts||ts<SS_TS)return;
+      const hash=(tx.hash||tx.transactionHash||'').toLowerCase();
+      const key=hash+':'+from+':'+to;
+      if(seen.has(key))return;
+      seen.add(key);
+
+      const isBuy=from===lp&&to!==lp;
+      const isSell=to===lp&&from!==lp;
+      if(!isBuy&&!isSell)return;
+
+      const trader=isBuy?to:from;
+      if(EX.has(trader)||NON_USER_ADDRS.has(trader))return;
+
+      let ctr=0;
+      try{
+        const v=tx.value||'0';
+        if(v.includes('.'))ctr=parseFloat(v);
+        else ctr=Number(BigInt(v))/Math.pow(10,parseInt(tx.tokenDecimal||DEC));
+      }catch(e){ctr=parseFloat(tx.value||'0')/Math.pow(10,DEC)}
+
+      newTrades.push({hash,ts,type:isBuy?'buy':'sell',trader,ctr,usd:ctr*price});
     });
-    txs.sort((a,b)=>parseInt(b.timeStamp)-parseInt(a.timeStamp));
 
-    // FIX #3: Warn if price is 0
-    if(price<=0){
-      log('WARNING: price is $0 - USD values will be inaccurate. Waiting for DexScreener...');
-      setSt('Price data pending...',1);
-    }
+    trades=newTrades.sort((a,b)=>b.ts-a.ts);
+    log('Built '+trades.length+' valid trades (price=$'+price.toFixed(6)+')');
 
-    setSt('Building trades...',1);
-    await buildTrades();
-    setSt('Scoring wallets...',1);
+    // Score wallets
+    setSt('Scoring...',1);
     await proc();
     buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
-    setSt('LIVE · '+RPC.split('//')[1].split('/')[0],1);
+    setSt('LIVE · '+result.source,1);
 
   }catch(e){
-    log('Fatal RPC error: '+e.message);
-    setSt('RPC error - retry 30s',0);
-    if(logCache.size===0){
-      $('feedBody').innerHTML='<div class="tbe">RPC error. Auto-retry in 30s.</div>';
-      $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting...</td></tr>';
-      jackpots=[];renderJackpots();
-    }
+    log('Error: '+e.message);
+    setSt('Error, retry 30s',0);
+    $('feedBody').innerHTML='<div class="tbe">Error loading data. Retrying in 30s...</div>';
   }
 }
 
@@ -732,116 +675,10 @@ async function fetchDex(){
     $('sVolume').textContent=fU(vol);$('sVolume').classList.remove('ld');
     $('sLiquidity').textContent=fU(liq);$('sLiquidity').classList.remove('ld');
     updTicker(price,ch,vol,liq,buys,sells);
-    log('Dex OK - $'+price.toFixed(6));
-  }catch(e){log('Dex ERR: '+e.message);}
+    log('Dex OK $'+price.toFixed(6));
+  }catch(e){log('Dex ERR: '+e.message)}
 }
 
-// =========================================================
-// FIX #4 (CRITICAL): BATCHED buildTrades
-// Old version did isContract() + getTxSender() PER LOG = 500+ sequential RPCs
-// New version: pre-collect unique addresses, batch-check in parallel groups
-// =========================================================
-async function buildTrades(){
-  const lp=LP.toLowerCase();
-  let skippedTime=0,skippedLp=0;
-  const rawLogs=[];
-
-  txs.forEach((tx,i)=>{
-    const f=(tx.from||'').toLowerCase();
-    const t=(tx.to||'').toLowerCase();
-    const ts=parseInt(tx.timeStamp||'0');
-    if(!ts||ts<SS_TS){skippedTime++;return;}
-    const hintedType=tx.type==='buy'||tx.type==='sell'?tx.type:null;
-    const isBuy=hintedType?hintedType==='buy':f===lp;
-    const isSell=hintedType?hintedType==='sell':t===lp;
-    if(!isBuy&&!isSell){skippedLp++;return;}
-    const counterpart=isBuy?t:f;
-    const hash=(tx.hash||tx.transactionHash||('nohash-'+i)).toLowerCase();
-    const logIndex=Number.isFinite(tx.logIndex)?tx.logIndex:i;
-    let val=0;
-    try{val=Number(BigInt(tx.value||'0'))/Math.pow(10,DEC);}catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC);}
-    rawLogs.push({hash,logIndex,ts,type:isBuy?'buy':'sell',counterpart,ctr:val});
-  });
-
-  log('Candidate logs: '+rawLogs.length+' (skipped: '+skippedTime+' pre-season, '+skippedLp+' not LP)');
-  const raw=rawLogs.sort((a,b)=>b.ts-a.ts||b.logIndex-a.logIndex);
-
-  // --- PHASE A: Batch isContract for all unique counterpart addresses ---
-  const uncheckedAddrs=new Set();
-  raw.forEach(g=>{
-    const c=(g.counterpart||'').toLowerCase();
-    if(c && !EX.has(c) && !NON_USER_ADDRS.has(c) && contractCache[c]===undefined)
-      uncheckedAddrs.add(c);
-  });
-  const addrArr=[...uncheckedAddrs];
-  if(addrArr.length>0){
-    log('Batch-checking '+addrArr.length+' addresses...');
-    setSt('Checking wallets... 0/'+addrArr.length,1);
-    for(let i=0;i<addrArr.length;i+=15){
-      const batch=addrArr.slice(i,i+15);
-      await Promise.all(batch.map(a=>isContract(a)));
-      setSt('Checking wallets... '+Math.min(i+15,addrArr.length)+'/'+addrArr.length,1);
-      if(i+15<addrArr.length) await sleep(120);
-    }
-  }
-
-  // --- PHASE B: Identify logs where counterpart is contract/excluded, need getTxSender ---
-  const needSenderHashes=new Set();
-  raw.forEach(g=>{
-    const c=(g.counterpart||'').toLowerCase();
-    const counterpartIsUser = c && !EX.has(c) && !NON_USER_ADDRS.has(c) && !contractCache[c];
-    if(!counterpartIsUser && g.hash && !g.hash.startsWith('nohash-')){
-      const h=g.hash.toLowerCase();
-      if(txSenderCache[h]===undefined) needSenderHashes.add(h);
-    }
-  });
-  const senderArr=[...needSenderHashes];
-  if(senderArr.length>0){
-    log('Batch-resolving '+senderArr.length+' tx senders...');
-    setSt('Resolving senders... 0/'+senderArr.length,1);
-    for(let i=0;i<senderArr.length;i+=12){
-      const batch=senderArr.slice(i,i+12);
-      await Promise.all(batch.map(h=>getTxSender(h)));
-      setSt('Resolving senders... '+Math.min(i+12,senderArr.length)+'/'+senderArr.length,1);
-      if(i+12<senderArr.length) await sleep(150);
-    }
-    // Batch-check isContract for newly discovered senders
-    const newAddrs=new Set();
-    senderArr.forEach(h=>{
-      const s=txSenderCache[h];
-      if(s && !EX.has(s) && !NON_USER_ADDRS.has(s) && contractCache[s]===undefined)
-        newAddrs.add(s);
-    });
-    const newArr=[...newAddrs];
-    if(newArr.length>0){
-      log('Checking '+newArr.length+' sender addresses...');
-      for(let i=0;i<newArr.length;i+=15){
-        const batch=newArr.slice(i,i+15);
-        await Promise.all(batch.map(a=>isContract(a)));
-        if(i+15<newArr.length) await sleep(120);
-      }
-    }
-  }
-
-  // --- PHASE C: Build trades synchronously from cached data (no more RPC calls) ---
-  setSt('Mapping trades...',1);
-  const out=[];
-  for(const g of raw){
-    let trader=null;
-    const c=(g.counterpart||'').toLowerCase();
-    if(c && !EX.has(c) && !NON_USER_ADDRS.has(c) && !contractCache[c]) trader=c;
-    if(!trader && g.hash && !g.hash.startsWith('nohash-')){
-      const sender=txSenderCache[g.hash.toLowerCase()];
-      if(sender && !EX.has(sender) && !NON_USER_ADDRS.has(sender) && !contractCache[sender]) trader=sender;
-    }
-    if(!trader) continue;
-    out.push({hash:g.hash,ts:g.ts,type:g.type,trader,ctr:g.ctr,usd:g.ctr*price});
-  }
-  trades=out;
-  log('Built '+trades.length+' trades (price=$'+price.toFixed(6)+')');
-}
-
-// FIX #5: proc() with throttled balance fetching
 async function proc(){
   tm={};const now=Date.now()/1e3;const sl=SD*864e2;
   trades.forEach(tr=>{
@@ -852,18 +689,17 @@ async function proc(){
     if(tr.type==='buy'){r.bV+=tr.usd;r.bC+=tr.ctr}else{r.sV+=tr.usd;r.sC+=tr.ctr}
   });
 
-  // Clear stale balance cache on each full proc
+  // Fetch balances via RPC (only thing RPC is used for)
   Object.keys(balanceCache).forEach(k=>delete balanceCache[k]);
-
   const wallets=Object.keys(tm);
-  setSt('Fetching balances... 0/'+wallets.length,1);
-  for(let i=0;i<wallets.length;i+=12){
-    const chunk=wallets.slice(i,i+12);
-    const bals=await Promise.all(chunk.map(a=>getCtrBalance(a)));
-    chunk.forEach((a,j)=>{tm[a].balC=bals[j]});
-    setSt('Fetching balances... '+Math.min(i+12,wallets.length)+'/'+wallets.length,1);
-    // FIX: Add delay between batches to avoid rate limiting
-    if(i+12<wallets.length) await sleep(120);
+  log('Fetching '+wallets.length+' balances...');
+  setSt('Balances... 0/'+wallets.length,1);
+  for(let i=0;i<wallets.length;i+=10){
+    const chunk=wallets.slice(i,i+10);
+    await Promise.all(chunk.map(a=>rpcBalance(a)));
+    chunk.forEach(a=>{tm[a].balC=balanceCache[a]||0});
+    setSt('Balances... '+Math.min(i+10,wallets.length)+'/'+wallets.length,1);
+    if(i+10<wallets.length)await sleep(100);
   }
 
   lb=Object.values(tm).map(t=>{
@@ -872,10 +708,9 @@ async function proc(){
     const holdRatio=t.bC>0?Math.max(Math.min(t.balC/t.bC,1),0):0;
     const aw=awBase*holdRatio;
     const hb=1+(Math.min(now-t.ft,sl)/sl)*.5;
-    const fs=raw*aw*hb;
-    return{...t,awBase,holdRatio,aw,hb,fs};
+    return{...t,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
   }).sort((a,b)=>b.fs-a.fs);
-  log(lb.length+' wallets ranked'+(lb[0]?', top: '+Math.round(lb[0].fs):''));
+  log(lb.length+' wallets ranked'+(lb[0]?', #1: '+Math.round(lb[0].fs):''));
 }
 
 function renderFeed(){
@@ -1005,38 +840,39 @@ async function lookupWallet(){
     if(walletTrades.length>0){
       let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0;
       walletTrades.forEach(t=>{lt=Math.max(lt,t.ts);ft=Math.min(ft,t.ts);if(t.type==='buy'){bV+=t.usd;bC+=t.ctr}else{sV+=t.usd;sC+=t.ctr}});
-      const balC=await getCtrBalance(inp);
+      const balC=await rpcBalance(inp);
       const raw=(3*bV)+(1*sV);const awBase=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
       const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;
       const now=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now-ft,sl)/sl)*.5;
       trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n:walletTrades.length,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
     }else{
-      log('Wallet not in cache, querying RPC...');
+      // Wallet not in loaded data - use Explorer API
+      log('Wallet not in cache, querying API...');
       try{
-        const latestHex=await rpcCallRetry('eth_blockNumber',[]);
-        const latestBlock=parseInt(latestHex,16);
-        const secsFromSS=Math.max(0,Math.floor(Date.now()/1000)-SS_TS);
-        const blocksBack=Math.ceil(secsFromSS/5.6)+500;
-        const fromBlock=Math.max(1,latestBlock-blocksBack);
-        const walletPadded='0x'+inp.slice(2).padStart(64,'0');
-        const buys=await fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,LP_PADDED,walletPadded]},fromBlock,latestBlock,'W-BUY',null);
-        const sells=await fetchLogsChunked({address:CTR,topics:[TRANSFER_TOPIC,walletPadded,LP_PADDED]},fromBlock,latestBlock,'W-SELL',null);
-        let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0,n=0;
-        const nowSec=Math.floor(Date.now()/1000);
-        const processLog=(l,isBuy)=>{
-          const blockNum=parseInt(l.blockNumber,16);const ts=Math.floor(nowSec-(latestBlock-blockNum)*5.6);
-          if(ts<SS_TS)return;const val=Number(BigInt(l.data||'0x0'))/Math.pow(10,DEC);const usd=val*price;
-          if(isBuy){bV+=usd;bC+=val}else{sV+=usd;sC+=val}n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts);
-        };
-        buys.forEach(l=>processLog(l,true));sells.forEach(l=>processLog(l,false));
-        if(n>0){
-          const balC=await getCtrBalance(inp);const raw=(3*bV)+(1*sV);
-          const awBase=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
-          const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;
-          const now2=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now2-ft,sl)/sl)*.5;
-          trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
+        const url=`https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx?contractaddress=${CTR}&address=${inp}&page=1&offset=1000&sort=desc&apikey=${API_KEY}`;
+        const r=await fetch(url);const d=await r.json();
+        if(d.status==='1'&&Array.isArray(d.result)){
+          let bV=0,sV=0,bC=0,sC=0,ft=Infinity,lt=0,n=0;
+          const lp=LP.toLowerCase();
+          d.result.forEach(tx=>{
+            const ts=parseInt(tx.timeStamp||'0');if(ts<SS_TS)return;
+            const from=(tx.from||'').toLowerCase();const to=(tx.to||'').toLowerCase();
+            const isBuy=from===lp;const isSell=to===lp;
+            if(!isBuy&&!isSell)return;
+            let val=0;try{val=Number(BigInt(tx.value||'0'))/Math.pow(10,DEC)}catch(e){val=parseFloat(tx.value||'0')/Math.pow(10,DEC)}
+            const usd=val*price;
+            if(isBuy){bV+=usd;bC+=val}else{sV+=usd;sC+=val}
+            n++;ft=Math.min(ft,ts);lt=Math.max(lt,ts);
+          });
+          if(n>0){
+            const balC=await rpcBalance(inp);const raw=(3*bV)+(1*sV);
+            const awBase=bV>0?Math.max(Math.min((bV-sV)/bV,1),0):0;
+            const holdRatio=bC>0?Math.max(Math.min(balC/bC,1),0):0;const aw=awBase*holdRatio;
+            const now2=Date.now()/1e3;const sl=SD*864e2;const hb=1+(Math.min(now2-ft,sl)/sl)*.5;
+            trader={addr:inp,bV,sV,bC,sC,balC,ft,lt,n,awBase,holdRatio,aw,hb,fs:raw*aw*hb};
+          }
         }
-      }catch(e){log('Wallet RPC error: '+e.message);}
+      }catch(e){log('Wallet API error: '+e.message)}
     }
   }
 
