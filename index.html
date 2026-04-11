@@ -517,6 +517,14 @@ function tA(ts){const s=Math.floor((Date.now()-ts*1e3)/1e3);if(s<60)return s+'s 
 function $(id){return document.getElementById(id)}
 function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function fetchJsonWithTimeout(url,timeoutMs=12000){
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const r=await fetch(url,{signal:ctrl.signal});
+    return await r.json();
+  }finally{clearTimeout(t)}
+}
 
 function hashToPermille(hash){const h=(hash||'').replace(/^0x/,'').padEnd(64,'0');let acc=0;for(let i=0;i<12;i++)acc=(acc*17+parseInt(h[i],16))%1000;return acc}
 function jackpotRoll(hash){const roll=hashToPermille(hash);if(roll>=JACKPOT_TOTAL_WEIGHT)return null;let sum=0;for(const tier of JACKPOT_TIERS){sum+=tier.weight;if(roll<sum)return tier}return null}
@@ -534,8 +542,7 @@ async function fetchTokenTransfers(){
       log('Trying '+api.name+'...');
       setSt('Connecting to '+api.name+'...',1);
       // Fetch page 1
-      const r1=await fetch(api.url(1));
-      const d1=await r1.json();
+      const d1=await fetchJsonWithTimeout(api.url(1),12000);
       let results=[];
       if(d1.status==='1'&&Array.isArray(d1.result)&&d1.result.length>0){
         results=d1.result;
@@ -544,8 +551,7 @@ async function fetchTokenTransfers(){
         if(results.length>=10000){
           setSt('Loading more from '+api.name+'...',1);
           try{
-            const r2=await fetch(api.url(2));
-            const d2=await r2.json();
+            const d2=await fetchJsonWithTimeout(api.url(2),12000);
             if(d2.status==='1'&&Array.isArray(d2.result)&&d2.result.length>0){
               results=[...results,...d2.result];
               log(api.name+' page 2: +'+d2.result.length);
@@ -773,8 +779,8 @@ async function _fetchTx(){
 
 async function fetchDex(){
   try{
-    const r=await fetch('https://api.dexscreener.com/latest/dex/pairs/cronos/'+LP);
-    const d=await r.json();const p=d.pair;if(!p)return;
+    const d=await fetchJsonWithTimeout('https://api.dexscreener.com/latest/dex/pairs/cronos/'+LP,12000);
+    const p=d.pair;if(!p)return;
     price=parseFloat(p.priceUsd)||0;
     const ch=parseFloat(p.priceChange?.h24)||0;
     const vol=p.volume?.h24||0;const liq=p.liquidity?.usd||0;
