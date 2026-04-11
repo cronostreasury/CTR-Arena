@@ -617,7 +617,7 @@ async function rpcCall(method,params,timeoutMs=12000){
 
 function padTopicAddress(addr){return '0x000000000000000000000000'+addr.toLowerCase().slice(2)}
 
-async function fetchTokenTransfersRpcFallback(lookbackBlocks=60000){
+async function fetchTokenTransfersRpcFallback(){
   const lp=LP.toLowerCase();
   const transferTopic='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
   const latestHex=await rpcCall('eth_blockNumber',[]);
@@ -625,7 +625,7 @@ async function fetchTokenTransfersRpcFallback(lookbackBlocks=60000){
   const latest=parseInt(latestHex,16);
   if(!Number.isFinite(latest))return null;
 
-  // Keep fallback fast enough for browser UX; expand only when needed.
+  const lookbackBlocks=180000; // ~4-6 days on Cronos, for reliable live feed fallback
   const fromBlock=Math.max(0,latest-lookbackBlocks);
   const chunk=4000;
   const logs=[];
@@ -687,7 +687,7 @@ async function _fetchTx(){
     // If data is stale, force an RPC refresh for recent blocks.
     if(result&&result.data?.length&&ageSec>STALE_DATA_SECONDS){
       log('Explorer data stale ('+Math.floor(ageSec/3600)+'h old), forcing RPC refresh...');
-      const rpcFresh=await fetchTokenTransfersRpcFallback(60000);
+      const rpcFresh=await fetchTokenTransfersRpcFallback();
       const rpcLatest=newestFromResult(rpcFresh?.data||[]);
       if(rpcFresh&&rpcFresh.data?.length&&rpcLatest>latestTs){
         result=rpcFresh;
@@ -698,12 +698,13 @@ async function _fetchTx(){
 
     if(!result||!result.data.length){
       log('Explorer APIs unavailable, switching to RPC fallback...');
-      result=await fetchTokenTransfersRpcFallback(60000);
-      if((!result||!result.data.length)){
-        log('Fast RPC scan empty, trying deeper scan...');
-        result=await fetchTokenTransfersRpcFallback(240000);
-      }
+      result=await fetchTokenTransfersRpcFallback();
       usedRpcFallback=true;
+    }
+    if(!result||!result.data.length){
+    if(!result||!result.data.length){
+      log('Explorer APIs unavailable, switching to RPC fallback...');
+      result=await fetchTokenTransfersRpcFallback();
     }
     if(!result||!result.data.length){
       setSt('No trade data available',0);
