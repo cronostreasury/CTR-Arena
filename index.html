@@ -500,6 +500,7 @@ const JACKPOT_TIERS=[
 ];
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
 const SS_TS=SS.getTime()/1e3;
+const STALE_DATA_SECONDS=6*3600;
 const JACKPOT_TOTAL_WEIGHT=JACKPOT_TIERS.reduce((s,t)=>s+t.weight,0);
 
 let price=0,trades=[],tm={},lb=[],jackpots=[];
@@ -668,6 +669,33 @@ async function _fetchTx(){
   try{
     setSt('Loading...',1);
     let result=await fetchTokenTransfers();
+    let usedRpcFallback=false;
+    const newestFromResult=(rows=[])=>rows.reduce((max,tx)=>{
+      const ts=parseInt(tx.timeStamp||'0');
+      return ts>max?ts:max;
+    },0);
+    let latestTs=newestFromResult(result?.data||[]);
+    const ageSec=latestTs?Math.floor(Date.now()/1000-latestTs):Infinity;
+
+    // Some explorer mirrors return valid but stale datasets (e.g. only trades from days ago).
+    // If data is stale, force an RPC refresh for recent blocks.
+    if(result&&result.data?.length&&ageSec>STALE_DATA_SECONDS){
+      log('Explorer data stale ('+Math.floor(ageSec/3600)+'h old), forcing RPC refresh...');
+      const rpcFresh=await fetchTokenTransfersRpcFallback();
+      const rpcLatest=newestFromResult(rpcFresh?.data||[]);
+      if(rpcFresh&&rpcFresh.data?.length&&rpcLatest>latestTs){
+        result=rpcFresh;
+        latestTs=rpcLatest;
+        usedRpcFallback=true;
+      }
+    }
+
+    if(!result||!result.data.length){
+      log('Explorer APIs unavailable, switching to RPC fallback...');
+      result=await fetchTokenTransfersRpcFallback();
+      usedRpcFallback=true;
+    }
+    if(!result||!result.data.length){
     if(!result||!result.data.length){
       log('Explorer APIs unavailable, switching to RPC fallback...');
       result=await fetchTokenTransfersRpcFallback();
@@ -734,7 +762,7 @@ async function _fetchTx(){
     setSt('Scoring...',1);
     await proc();
     buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
-    setSt('LIVE · '+result.source,1);
+    setSt('LIVE · '+(usedRpcFallback?'RPC (fresh)':result.source),1);
 
   }catch(e){
     log('Error: '+e.message);
