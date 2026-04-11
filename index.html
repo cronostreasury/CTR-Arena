@@ -500,6 +500,7 @@ const JACKPOT_TIERS=[
 ];
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
 const SS_TS=SS.getTime()/1e3;
+const STALE_DATA_SECONDS=6*3600;
 const JACKPOT_TOTAL_WEIGHT=JACKPOT_TIERS.reduce((s,t)=>s+t.weight,0);
 
 let price=0,trades=[],tm={},lb=[],jackpots=[];
@@ -589,6 +590,74 @@ async function rpcBalance(addr){
   balanceCache[a]=0;return 0;
 }
 
+async function rpcCall(method,params,timeoutMs=12000){
+  for(let i=0;i<RPC_LIST.length;i++){
+    const url=RPC_LIST[(rpcIdx+i)%RPC_LIST.length];
+    try{
+      const ctrl=new AbortController();
+      const t=setTimeout(()=>ctrl.abort(),timeoutMs);
+      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({jsonrpc:'2.0',method,params,id:1}),signal:ctrl.signal});
+      clearTimeout(t);
+      const d=await r.json();
+      if(d&&d.result!==undefined){
+        rpcIdx=(rpcIdx+i)%RPC_LIST.length;
+        return d.result;
+      }
+    }catch(e){continue}
+  }
+  return null;
+}
+
+function padTopicAddress(addr){return '0x000000000000000000000000'+addr.toLowerCase().slice(2)}
+
+async function fetchTokenTransfersRpcFallback(){
+  const lp=LP.toLowerCase();
+  const transferTopic='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  const latestHex=await rpcCall('eth_blockNumber',[]);
+  if(!latestHex)return null;
+  const latest=parseInt(latestHex,16);
+  if(!Number.isFinite(latest))return null;
+
+  const lookbackBlocks=180000; // ~4-6 days on Cronos, for reliable live feed fallback
+  const fromBlock=Math.max(0,latest-lookbackBlocks);
+  const chunk=4000;
+  const logs=[];
+  const lpTopic=padTopicAddress(lp);
+
+  for(let start=fromBlock;start<=latest;start+=chunk){
+    const end=Math.min(latest,start+chunk-1);
+    setSt('RPC fallback: blocks '+start+'-'+end,1);
+    const range={fromBlock:'0x'+start.toString(16),toBlock:'0x'+end.toString(16),address:CTR};
+    const sellLogs=await rpcCall('eth_getLogs',[{...range,topics:[transferTopic,null,lpTopic]}],20000);
+    const buyLogs=await rpcCall('eth_getLogs',[{...range,topics:[transferTopic,lpTopic]}],20000);
+    if(Array.isArray(sellLogs))logs.push(...sellLogs);
+    if(Array.isArray(buyLogs))logs.push(...buyLogs);
+    await sleep(60);
+  }
+
+  if(!logs.length)return {source:'RPC fallback',data:[]};
+
+  return {
+    source:'RPC fallback',
+    data:logs.map(log=>{
+      const topics=log.topics||[];
+      const from='0x'+(topics[1]||'').slice(-40);
+      const to='0x'+(topics[2]||'').slice(-40);
+      return{
+        from,to,
+        hash:(log.transactionHash||'').toLowerCase(),
+        transactionHash:(log.transactionHash||'').toLowerCase(),
+        timeStamp:parseInt(log.timeStamp||'0'),
+        blockNumber:parseInt(log.blockNumber||'0x0',16),
+        logIndex:parseInt(log.logIndex||'0x0',16),
+        value:BigInt(log.data||'0x0').toString(),
+        tokenDecimal:String(DEC)
+      };
+    })
+  };
+}
+
 // === MAIN FETCH: Explorer API first, fast and complete ===
 async function fetchTx(){
   if(fetchInProgress){log('Fetch running, skip');return}
@@ -599,10 +668,36 @@ async function fetchTx(){
 async function _fetchTx(){
   try{
     setSt('Loading...',1);
-    const result=await fetchTokenTransfers();
+    let result=await fetchTokenTransfers();
+    let usedRpcFallback=false;
+    const newestFromResult=(rows=[])=>rows.reduce((max,tx)=>{
+      const ts=parseInt(tx.timeStamp||'0');
+      return ts>max?ts:max;
+    },0);
+    let latestTs=newestFromResult(result?.data||[]);
+    const ageSec=latestTs?Math.floor(Date.now()/1000-latestTs):Infinity;
+
+    // Some explorer mirrors return valid but stale datasets (e.g. only trades from days ago).
+    // If data is stale, force an RPC refresh for recent blocks.
+    if(result&&result.data?.length&&ageSec>STALE_DATA_SECONDS){
+      log('Explorer data stale ('+Math.floor(ageSec/3600)+'h old), forcing RPC refresh...');
+      const rpcFresh=await fetchTokenTransfersRpcFallback();
+      const rpcLatest=newestFromResult(rpcFresh?.data||[]);
+      if(rpcFresh&&rpcFresh.data?.length&&rpcLatest>latestTs){
+        result=rpcFresh;
+        latestTs=rpcLatest;
+        usedRpcFallback=true;
+      }
+    }
+
     if(!result||!result.data.length){
-      setSt('No data from APIs',0);
-      $('feedBody').innerHTML='<div class="tbe">Could not load trades. APIs may be temporarily unavailable.</div>';
+      log('Explorer APIs unavailable, switching to RPC fallback...');
+      result=await fetchTokenTransfersRpcFallback();
+      usedRpcFallback=true;
+    }
+    if(!result||!result.data.length){
+      setSt('No trade data available',0);
+      $('feedBody').innerHTML='<div class="tbe">Could not load trades from explorer APIs or RPC fallback.</div>';
       $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data</td></tr>';
       return;
     }
@@ -618,9 +713,9 @@ async function _fetchTx(){
       const from=(tx.from||'').toLowerCase();
       const to=(tx.to||'').toLowerCase();
       const ts=parseInt(tx.timeStamp||'0');
-      if(!ts||ts<SS_TS)return;
+      if(ts&&ts<SS_TS)return;
       const hash=(tx.hash||tx.transactionHash||'').toLowerCase();
-      const key=hash+':'+from+':'+to;
+      const key=hash+':'+from+':'+to+':'+(tx.logIndex||'');
       if(seen.has(key))return;
       seen.add(key);
 
@@ -638,17 +733,31 @@ async function _fetchTx(){
         else ctr=Number(BigInt(v))/Math.pow(10,parseInt(tx.tokenDecimal||DEC));
       }catch(e){ctr=parseFloat(tx.value||'0')/Math.pow(10,DEC)}
 
-      newTrades.push({hash,ts,type:isBuy?'buy':'sell',trader,ctr,usd:ctr*price});
+      newTrades.push({hash,ts,type:isBuy?'buy':'sell',trader,ctr,usd:ctr*price,blockNumber:parseInt(tx.blockNumber||'0')||0});
     });
 
-    trades=newTrades.sort((a,b)=>b.ts-a.ts);
+    // If timestamps are missing (RPC logs), map them using block timestamps
+    const needsTs=newTrades.filter(t=>!t.ts&&t.blockNumber>0);
+    if(needsTs.length){
+      const blocks=[...new Set(needsTs.map(t=>t.blockNumber))];
+      const tsMap={};
+      for(const bn of blocks){
+        const blk=await rpcCall('eth_getBlockByNumber',['0x'+bn.toString(16),false]);
+        const tsHex=blk&&blk.timestamp?blk.timestamp:'0x0';
+        tsMap[bn]=parseInt(tsHex,16)||0;
+      }
+      newTrades.forEach(t=>{if(!t.ts&&t.blockNumber>0)t.ts=tsMap[t.blockNumber]||0;});
+    }
+    const filteredTrades=newTrades.filter(t=>t.ts&&t.ts>=SS_TS);
+
+    trades=filteredTrades.sort((a,b)=>b.ts-a.ts);
     log('Built '+trades.length+' valid trades (price=$'+price.toFixed(6)+')');
 
     // Score wallets
     setSt('Scoring...',1);
     await proc();
     buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
-    setSt('LIVE · '+result.source,1);
+    setSt('LIVE · '+(usedRpcFallback?'RPC (fresh)':result.source),1);
 
   }catch(e){
     log('Error: '+e.message);
