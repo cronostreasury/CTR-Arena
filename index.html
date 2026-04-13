@@ -625,7 +625,7 @@ async function fetchTokenTransfersRpcFallback(){
   const latest=parseInt(latestHex,16);
   if(!Number.isFinite(latest))return null;
 
-  const lookbackBlocks=180000; // ~4-6 days on Cronos, for reliable live feed fallback
+  const lookbackBlocks=360000; // ~10-12 days on Cronos, for reliable live feed fallback
   const fromBlock=Math.max(0,latest-lookbackBlocks);
   const chunk=4000;
   const logs=[];
@@ -700,11 +700,6 @@ async function _fetchTx(){
       log('Explorer APIs unavailable, switching to RPC fallback...');
       result=await fetchTokenTransfersRpcFallback();
       usedRpcFallback=true;
-    }
-    if(!result||!result.data.length){
-    if(!result||!result.data.length){
-      log('Explorer APIs unavailable, switching to RPC fallback...');
-      result=await fetchTokenTransfersRpcFallback();
     }
     if(!result||!result.data.length){
       setSt('No trade data available',0);
