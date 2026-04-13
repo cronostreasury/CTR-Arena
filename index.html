@@ -552,127 +552,95 @@ async function rpcBalance(addr){
 function hashToPermille(hash){const h=(hash||'').replace(/^0x/,'').padEnd(64,'0');let acc=0;for(let i=0;i<12;i++)acc=(acc*17+parseInt(h[i],16))%1000;return acc}
 function jackpotRoll(hash){const roll=hashToPermille(hash);if(roll>=JACKPOT_TOTAL_WEIGHT)return null;let sum=0;for(const tier of JACKPOT_TIERS){sum+=tier.weight;if(roll<sum)return tier}return null}
 
-// === TRANSACTION TRACKING (rewritten): load ALL CTR transfers on the pool ===
-async function fetchTokenTransfers(){
-  const endpoints=[
-    {
-      name:'Cronos Explorer',
-      build:page=>`https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx?contractaddress=${CTR}&address=${LP}&page=${page}&offset=1000&sort=desc&apikey=${API_KEY}`
-    },
-    {
-      name:'BlockScout',
-      build:page=>`https://cronos.org/explorer/api?module=account&action=tokentx&contractaddress=${CTR}&address=${LP}&page=${page}&offset=1000&sort=desc`
-    }
-  ];
+// === TRANSACTION TRACKING (new approach): incremental pool sync from Cronos Explorer ===
+const POOL_TRACK_ADDR='0xF118aA245B0627b4752607620D0048B492A5f4FB'.toLowerCase();
+const TRACK_ENDPOINT=page=>`https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx?contractaddress=${CTR}&address=${POOL_TRACK_ADDR}&page=${page}&offset=1000&sort=desc&apikey=${API_KEY}`;
+let txBootstrapped=false;
+const tradeIndex=new Map();
 
-  for(const ep of endpoints){
-    try{
-      setSt('Loading all pool transactions from '+ep.name+'...',1);
-      log('Tracking pool '+LP+' via '+ep.name);
-      const rows=[];
-      const seen=new Set();
-      const maxPages=20;
-
-      for(let page=1;page<=maxPages;page++){
-        const data=await fetchJsonWithTimeout(ep.build(page),12000);
-        const list=Array.isArray(data?.result)?data.result:[];
-        if(!list.length)break;
-
-        let added=0;
-        list.forEach(tx=>{
-          const hash=(tx.hash||tx.transactionHash||'').toLowerCase();
-          const key=hash+':'+(tx.logIndex||'')+':'+(tx.from||'').toLowerCase()+':'+(tx.to||'').toLowerCase();
-          if(!hash||seen.has(key))return;
-          seen.add(key);
-          rows.push(tx);
-          added++;
-        });
-
-        log(ep.name+' page '+page+': +'+added+' entries');
-        if(list.length<1000)break;
-        await sleep(100);
-      }
-
-      if(rows.length){
-        return {source:ep.name,data:rows};
-      }
-    }catch(e){
-      log(ep.name+' failed: '+e.message);
-    }
-  }
-
-  return null;
-}
-
-// === MAIN FETCH ===
-async function fetchTx(){
-  if(fetchInProgress){log('Fetch running, skip');return}
-  fetchInProgress=true;
-  try{await _fetchTx();}finally{fetchInProgress=false}
-}
-
-function parseTokenAmount(raw,decimals){
+function normalizeCtrValue(raw,decimals){
+  const d=Number(decimals||DEC)||DEC;
   try{
     const v=String(raw||'0');
-    const d=Number(decimals||DEC);
     if(v.includes('.'))return Number.parseFloat(v)||0;
     return Number(BigInt(v))/Math.pow(10,d);
   }catch(e){
-    return Number.parseFloat(raw||'0')/Math.pow(10,DEC);
+    return Number.parseFloat(raw||'0')/Math.pow(10,d);
   }
 }
 
-async function _fetchTx(){
-  try{
-    setSt('Loading pool transactions...',1);
-    const result=await fetchTokenTransfers();
+function transferToTrade(tx){
+  const from=(tx.from||'').toLowerCase();
+  const to=(tx.to||'').toLowerCase();
+  const isBuy=from===POOL_TRACK_ADDR&&to!==POOL_TRACK_ADDR;
+  const isSell=to===POOL_TRACK_ADDR&&from!==POOL_TRACK_ADDR;
+  if(!isBuy&&!isSell)return null;
 
-    if(!result||!Array.isArray(result.data)||!result.data.length){
+  const trader=isBuy?to:from;
+  if(!trader||EX.has(trader)||NON_USER_ADDRS.has(trader))return null;
+
+  const hash=(tx.hash||tx.transactionHash||'').toLowerCase();
+  const logIndex=String(tx.logIndex||'0');
+  if(!hash)return null;
+  const key=hash+':'+logIndex+':'+from+':'+to;
+
+  const ts=Number.parseInt(tx.timeStamp||'0',10)||0;
+  const ctr=normalizeCtrValue(tx.value,tx.tokenDecimal);
+  return{
+    key,hash,ts,
+    type:isBuy?'buy':'sell',
+    trader,ctr,
+    usd:ctr*price,
+    blockNumber:Number.parseInt(tx.blockNumber||'0',10)||0
+  };
+}
+
+async function pullPoolPages(maxPages){
+  const rows=[];
+  for(let page=1;page<=maxPages;page++){
+    const payload=await fetchJsonWithTimeout(TRACK_ENDPOINT(page),12000);
+    const list=Array.isArray(payload?.result)?payload.result:[];
+    if(!list.length)break;
+    rows.push(...list);
+    log('Pool sync page '+page+' -> '+list.length+' transfers');
+    if(list.length<1000)break;
+    await sleep(80);
+  }
+  return rows;
+}
+
+function mergeTrades(rawTransfers){
+  let inserted=0;
+  rawTransfers.forEach(tx=>{
+    const parsed=transferToTrade(tx);
+    if(!parsed)return;
+    if(tradeIndex.has(parsed.key))return;
+    tradeIndex.set(parsed.key,parsed);
+    inserted++;
+  });
+
+  trades=[...tradeIndex.values()].sort((a,b)=>b.ts-a.ts);
+  return inserted;
+}
+
+async function fetchTx(){
+  if(fetchInProgress){log('Fetch running, skip');return}
+  fetchInProgress=true;
+  try{
+    const maxPages=txBootstrapped?2:30;
+    setSt(txBootstrapped?'Syncing latest pool transactions...':'Initial pool sync (all pages)...',1);
+    const raw=await pullPoolPages(maxPages);
+
+    if(!raw.length&&!trades.length){
       setSt('No transaction data available',0);
       $('feedBody').innerHTML='<div class="tbe">Could not load pool transactions.</div>';
       $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data</td></tr>';
       return;
     }
 
-    const lp=LP.toLowerCase();
-    const mapped=[];
-    const seenTrade=new Set();
-
-    result.data.forEach(tx=>{
-      const from=(tx.from||'').toLowerCase();
-      const to=(tx.to||'').toLowerCase();
-      const isBuy=from===lp&&to!==lp;
-      const isSell=to===lp&&from!==lp;
-      if(!isBuy&&!isSell)return;
-
-      const hash=(tx.hash||tx.transactionHash||'').toLowerCase();
-      if(!hash)return;
-      const key=hash+':'+(tx.logIndex||'')+':'+from+':'+to;
-      if(seenTrade.has(key))return;
-      seenTrade.add(key);
-
-      let ts=Number.parseInt(tx.timeStamp||'0',10);
-      if(!Number.isFinite(ts)||ts<=0){
-        ts=0;
-      }
-
-      const ctr=parseTokenAmount(tx.value,tx.tokenDecimal);
-      const trader=isBuy?to:from;
-      if(!trader||EX.has(trader)||NON_USER_ADDRS.has(trader))return;
-
-      mapped.push({
-        hash,
-        ts,
-        type:isBuy?'buy':'sell',
-        trader,
-        ctr,
-        usd:ctr*price,
-        blockNumber:Number.parseInt(tx.blockNumber||'0',10)||0
-      });
-    });
-
-    trades=mapped.sort((a,b)=>(b.ts||0)-(a.ts||0));
-    log('Loaded '+trades.length+' pool trades from '+result.source);
+    const added=mergeTrades(raw);
+    txBootstrapped=true;
+    log('Pool trades total='+trades.length+' (added '+added+')');
 
     setSt('Scoring '+trades.length+' trades...',1);
     await proc();
@@ -682,11 +650,13 @@ async function _fetchTx(){
     renderLB();
     updCounts();
     updPrizePool();
-    setSt('LIVE · '+result.source,1);
+    setSt('LIVE · Cronos Explorer pool stream',1);
   }catch(e){
-    log('Error: '+e.message);
+    log('Pool sync error: '+e.message);
     setSt('Error, retry 30s',0);
-    $('feedBody').innerHTML='<div class="tbe">Error loading transactions. Retrying in 30s...</div>';
+    if(!trades.length)$('feedBody').innerHTML='<div class="tbe">Error loading pool transactions. Retrying in 30s...</div>';
+  }finally{
+    fetchInProgress=false;
   }
 }
 
