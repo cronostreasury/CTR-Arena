@@ -702,11 +702,6 @@ async function _fetchTx(){
       usedRpcFallback=true;
     }
     if(!result||!result.data.length){
-    if(!result||!result.data.length){
-      log('Explorer APIs unavailable, switching to RPC fallback...');
-      result=await fetchTokenTransfersRpcFallback();
-    }
-    if(!result||!result.data.length){
       setSt('No trade data available',0);
       $('feedBody').innerHTML='<div class="tbe">Could not load trades from explorer APIs or RPC fallback.</div>';
       $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data</td></tr>';
