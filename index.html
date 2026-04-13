@@ -500,6 +500,7 @@ const JACKPOT_TIERS=[
 ];
 const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
 const SS_TS=SS.getTime()/1e3;
+const STALE_DATA_SECONDS=6*3600;
 const JACKPOT_TOTAL_WEIGHT=JACKPOT_TIERS.reduce((s,t)=>s+t.weight,0);
 
 let price=0,trades=[],tm={},lb=[],jackpots=[];
@@ -523,6 +524,45 @@ async function fetchJsonWithTimeout(url,timeoutMs=12000){
     const r=await fetch(url,{signal:ctrl.signal});
     return await r.json();
   }finally{clearTimeout(t)}
+}
+
+function hashToPermille(hash){const h=(hash||'').replace(/^0x/,'').padEnd(64,'0');let acc=0;for(let i=0;i<12;i++)acc=(acc*17+parseInt(h[i],16))%1000;return acc}
+function jackpotRoll(hash){const roll=hashToPermille(hash);if(roll>=JACKPOT_TOTAL_WEIGHT)return null;let sum=0;for(const tier of JACKPOT_TIERS){sum+=tier.weight;if(roll<sum)return tier}return null}
+
+// === EXPLORER API: fetch ALL CTR token transfers for LP pair ===
+async function fetchTokenTransfers(){
+  const apis=[
+    {name:'Cronos Explorer',url:p=>`https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx?contractaddress=${CTR}&address=${LP}&page=${p}&offset=5000&sort=desc&apikey=${API_KEY}`},
+    {name:'BlockScout',url:p=>`https://cronos.org/explorer/api?module=account&action=tokentx&contractaddress=${CTR}&address=${LP}&page=${p}&offset=5000&sort=desc`},
+    {name:'Cronoscan',url:p=>`https://api.cronoscan.com/api?module=account&action=tokentx&contractaddress=${CTR}&address=${LP}&page=${p}&offset=5000&sort=desc&apikey=YourApiKeyToken`}
+  ];
+
+  for(const api of apis){
+    try{
+      log('Trying '+api.name+'...');
+      setSt('Connecting to '+api.name+'...',1);
+      let results=[];
+      let page=1;
+      while(true){
+        const d=await fetchJsonWithTimeout(api.url(page),15000);
+        let batch=[];
+        if((d.status==='1'||d.status===1)&&Array.isArray(d.result)&&d.result.length>0) batch=d.result;
+        else if(Array.isArray(d.result)&&d.result.length>0) batch=d.result;
+        else{ log(api.name+' p'+page+' no data (status='+d.status+', msg='+d.message+')'); break; }
+        results=[...results,...batch];
+        log(api.name+' page '+page+': +'+batch.length+' = '+results.length+' total');
+        setSt(api.name+': '+results.length+' transfers...',1);
+        if(batch.length<5000) break;
+        page++;
+        if(page>20) break; // Safety: max 100k results
+        await sleep(200);
+      }
+      if(results.length>0) return{source:api.name,data:results};
+    }catch(e){
+      log(api.name+' failed: '+e.message);
+    }
+  }
+  return null;
 }
 
 // RPC only for balance checks
@@ -549,114 +589,195 @@ async function rpcBalance(addr){
   balanceCache[a]=0;return 0;
 }
 
-function hashToPermille(hash){const h=(hash||'').replace(/^0x/,'').padEnd(64,'0');let acc=0;for(let i=0;i<12;i++)acc=(acc*17+parseInt(h[i],16))%1000;return acc}
-function jackpotRoll(hash){const roll=hashToPermille(hash);if(roll>=JACKPOT_TOTAL_WEIGHT)return null;let sum=0;for(const tier of JACKPOT_TIERS){sum+=tier.weight;if(roll<sum)return tier}return null}
-
-// === TRANSACTION TRACKING (new approach): incremental pool sync from Cronos Explorer ===
-const POOL_TRACK_ADDR='0xF118aA245B0627b4752607620D0048B492A5f4FB'.toLowerCase();
-const TRACK_ENDPOINT=page=>`https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx?contractaddress=${CTR}&address=${POOL_TRACK_ADDR}&page=${page}&offset=1000&sort=desc&apikey=${API_KEY}`;
-let txBootstrapped=false;
-const tradeIndex=new Map();
-
-function normalizeCtrValue(raw,decimals){
-  const d=Number(decimals||DEC)||DEC;
-  try{
-    const v=String(raw||'0');
-    if(v.includes('.'))return Number.parseFloat(v)||0;
-    return Number(BigInt(v))/Math.pow(10,d);
-  }catch(e){
-    return Number.parseFloat(raw||'0')/Math.pow(10,d);
+async function rpcCall(method,params,timeoutMs=12000){
+  for(let i=0;i<RPC_LIST.length;i++){
+    const url=RPC_LIST[(rpcIdx+i)%RPC_LIST.length];
+    try{
+      const ctrl=new AbortController();
+      const t=setTimeout(()=>ctrl.abort(),timeoutMs);
+      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({jsonrpc:'2.0',method,params,id:1}),signal:ctrl.signal});
+      clearTimeout(t);
+      const d=await r.json();
+      if(d&&d.result!==undefined){
+        rpcIdx=(rpcIdx+i)%RPC_LIST.length;
+        return d.result;
+      }
+    }catch(e){continue}
   }
+  return null;
 }
 
-function transferToTrade(tx){
-  const from=(tx.from||'').toLowerCase();
-  const to=(tx.to||'').toLowerCase();
-  const isBuy=from===POOL_TRACK_ADDR&&to!==POOL_TRACK_ADDR;
-  const isSell=to===POOL_TRACK_ADDR&&from!==POOL_TRACK_ADDR;
-  if(!isBuy&&!isSell)return null;
+function padTopicAddress(addr){return '0x000000000000000000000000'+addr.toLowerCase().slice(2)}
 
-  const trader=isBuy?to:from;
-  if(!trader||EX.has(trader)||NON_USER_ADDRS.has(trader))return null;
+async function fetchTokenTransfersRpcFallback(){
+  const lp=LP.toLowerCase();
+  const transferTopic='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  const latestHex=await rpcCall('eth_blockNumber',[]);
+  if(!latestHex)return null;
+  const latest=parseInt(latestHex,16);
+  if(!Number.isFinite(latest))return null;
 
-  const hash=(tx.hash||tx.transactionHash||'').toLowerCase();
-  const logIndex=String(tx.logIndex||'0');
-  if(!hash)return null;
-  const key=hash+':'+logIndex+':'+from+':'+to;
+  const lookbackBlocks=432000; // ~15 days on Cronos (~5 blocks/sec)
+  const fromBlock=Math.max(0,latest-lookbackBlocks);
+  const chunk=5000;
+  const logs=[];
+  const lpTopic=padTopicAddress(lp);
 
-  const ts=Number.parseInt(tx.timeStamp||'0',10)||0;
-  const ctr=normalizeCtrValue(tx.value,tx.tokenDecimal);
-  return{
-    key,hash,ts,
-    type:isBuy?'buy':'sell',
-    trader,ctr,
-    usd:ctr*price,
-    blockNumber:Number.parseInt(tx.blockNumber||'0',10)||0
+  // Build list of all chunks
+  const chunks=[];
+  for(let start=fromBlock;start<=latest;start+=chunk){
+    chunks.push({start,end:Math.min(latest,start+chunk-1)});
+  }
+  const PARALLEL=4; // Fetch 4 chunks at once
+  setSt('RPC fallback: 0/'+chunks.length+' chunks',1);
+  for(let i=0;i<chunks.length;i+=PARALLEL){
+    const batch=chunks.slice(i,i+PARALLEL);
+    setSt('RPC fallback: chunk '+(i+1)+'/'+chunks.length,1);
+    const batchResults=await Promise.all(batch.map(async({start,end})=>{
+      const range={fromBlock:'0x'+start.toString(16),toBlock:'0x'+end.toString(16),address:CTR};
+      const [sLogs,bLogs]=await Promise.all([
+        rpcCall('eth_getLogs',[{...range,topics:[transferTopic,null,lpTopic]}],25000),
+        rpcCall('eth_getLogs',[{...range,topics:[transferTopic,lpTopic]}],25000)
+      ]);
+      const r=[];
+      if(Array.isArray(sLogs))r.push(...sLogs);
+      if(Array.isArray(bLogs))r.push(...bLogs);
+      return r;
+    }));
+    batchResults.forEach(r=>logs.push(...r));
+    if(i+PARALLEL<chunks.length)await sleep(80);
+  }
+
+  if(!logs.length)return {source:'RPC fallback',data:[]};
+
+  return {
+    source:'RPC fallback',
+    data:logs.map(log=>{
+      const topics=log.topics||[];
+      const from='0x'+(topics[1]||'').slice(-40);
+      const to='0x'+(topics[2]||'').slice(-40);
+      return{
+        from,to,
+        hash:(log.transactionHash||'').toLowerCase(),
+        transactionHash:(log.transactionHash||'').toLowerCase(),
+        timeStamp:parseInt(log.timeStamp||'0'),
+        blockNumber:parseInt(log.blockNumber||'0x0',16),
+        logIndex:parseInt(log.logIndex||'0x0',16),
+        value:BigInt(log.data||'0x0').toString(),
+        tokenDecimal:String(DEC)
+      };
+    })
   };
 }
 
-async function pullPoolPages(maxPages){
-  const rows=[];
-  for(let page=1;page<=maxPages;page++){
-    const payload=await fetchJsonWithTimeout(TRACK_ENDPOINT(page),12000);
-    const list=Array.isArray(payload?.result)?payload.result:[];
-    if(!list.length)break;
-    rows.push(...list);
-    log('Pool sync page '+page+' -> '+list.length+' transfers');
-    if(list.length<1000)break;
-    await sleep(80);
-  }
-  return rows;
-}
-
-function mergeTrades(rawTransfers){
-  let inserted=0;
-  rawTransfers.forEach(tx=>{
-    const parsed=transferToTrade(tx);
-    if(!parsed)return;
-    if(tradeIndex.has(parsed.key))return;
-    tradeIndex.set(parsed.key,parsed);
-    inserted++;
-  });
-
-  trades=[...tradeIndex.values()].sort((a,b)=>b.ts-a.ts);
-  return inserted;
-}
-
+// === MAIN FETCH: Explorer API first, fast and complete ===
 async function fetchTx(){
   if(fetchInProgress){log('Fetch running, skip');return}
   fetchInProgress=true;
-  try{
-    const maxPages=txBootstrapped?2:30;
-    setSt(txBootstrapped?'Syncing latest pool transactions...':'Initial pool sync (all pages)...',1);
-    const raw=await pullPoolPages(maxPages);
+  try{await _fetchTx();}finally{fetchInProgress=false}
+}
 
-    if(!raw.length&&!trades.length){
-      setSt('No transaction data available',0);
-      $('feedBody').innerHTML='<div class="tbe">Could not load pool transactions.</div>';
+async function _fetchTx(){
+  try{
+    setSt('Loading...',1);
+    let result=await fetchTokenTransfers();
+    let usedRpcFallback=false;
+    const newestFromResult=(rows=[])=>rows.reduce((max,tx)=>{
+      const ts=parseInt(tx.timeStamp||'0');
+      return ts>max?ts:max;
+    },0);
+    let latestTs=newestFromResult(result?.data||[]);
+    const ageSec=latestTs?Math.floor(Date.now()/1000-latestTs):Infinity;
+
+    // If explorer data is stale, MERGE with fresh RPC data (keep history + add recent)
+    if(result&&result.data?.length&&ageSec>STALE_DATA_SECONDS){
+      log('Explorer data stale ('+Math.floor(ageSec/3600)+'h old), merging with RPC...');
+      setSt('Merging Explorer+RPC...',1);
+      const rpcFresh=await fetchTokenTransfersRpcFallback();
+      if(rpcFresh&&rpcFresh.data?.length){
+        const existingHashes=new Set(result.data.map(tx=>(tx.hash||tx.transactionHash||'').toLowerCase()));
+        const newTxs=rpcFresh.data.filter(tx=>!existingHashes.has((tx.hash||tx.transactionHash||'').toLowerCase()));
+        result={source:result.source+'(+RPC)',data:[...result.data,...newTxs]};
+        latestTs=newestFromResult(result.data);
+        usedRpcFallback=true;
+        log('Merged: '+result.data.length+' total ('+newTxs.length+' new from RPC)');
+      }
+    }
+
+    if(!result||!result.data.length){
+      log('Explorer APIs unavailable, switching to RPC fallback...');
+      result=await fetchTokenTransfersRpcFallback();
+      usedRpcFallback=true;
+    }
+    if(!result||!result.data.length){
+      setSt('No trade data available',0);
+      $('feedBody').innerHTML='<div class="tbe">Could not load trades from explorer APIs or RPC fallback.</div>';
       $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data</td></tr>';
       return;
     }
+    log(result.source+': '+result.data.length+' total transfers');
+    setSt('Processing '+result.data.length+' transfers...',1);
 
-    const added=mergeTrades(raw);
-    txBootstrapped=true;
-    log('Pool trades total='+trades.length+' (added '+added+')');
+    // Build trades directly from API data (no RPC needed!)
+    const lp=LP.toLowerCase();
+    const newTrades=[];
+    const seen=new Set();
 
-    setSt('Scoring '+trades.length+' trades...',1);
+    result.data.forEach(tx=>{
+      const from=(tx.from||'').toLowerCase();
+      const to=(tx.to||'').toLowerCase();
+      const ts=parseInt(tx.timeStamp||'0');
+      if(ts&&ts<SS_TS)return;
+      const hash=(tx.hash||tx.transactionHash||'').toLowerCase();
+      const key=hash+':'+from+':'+to+':'+(tx.logIndex||'');
+      if(seen.has(key))return;
+      seen.add(key);
+
+      const isBuy=from===lp&&to!==lp;
+      const isSell=to===lp&&from!==lp;
+      if(!isBuy&&!isSell)return;
+
+      const trader=isBuy?to:from;
+      if(EX.has(trader)||NON_USER_ADDRS.has(trader))return;
+
+      let ctr=0;
+      try{
+        const v=tx.value||'0';
+        if(v.includes('.'))ctr=parseFloat(v);
+        else ctr=Number(BigInt(v))/Math.pow(10,parseInt(tx.tokenDecimal||DEC));
+      }catch(e){ctr=parseFloat(tx.value||'0')/Math.pow(10,DEC)}
+
+      newTrades.push({hash,ts,type:isBuy?'buy':'sell',trader,ctr,usd:ctr*price,blockNumber:parseInt(tx.blockNumber||'0')||0});
+    });
+
+    // If timestamps are missing (RPC logs), map them using block timestamps
+    const needsTs=newTrades.filter(t=>!t.ts&&t.blockNumber>0);
+    if(needsTs.length){
+      const blocks=[...new Set(needsTs.map(t=>t.blockNumber))];
+      const tsMap={};
+      for(const bn of blocks){
+        const blk=await rpcCall('eth_getBlockByNumber',['0x'+bn.toString(16),false]);
+        const tsHex=blk&&blk.timestamp?blk.timestamp:'0x0';
+        tsMap[bn]=parseInt(tsHex,16)||0;
+      }
+      newTrades.forEach(t=>{if(!t.ts&&t.blockNumber>0)t.ts=tsMap[t.blockNumber]||0;});
+    }
+    const filteredTrades=newTrades.filter(t=>t.ts&&t.ts>=SS_TS);
+
+    trades=filteredTrades.sort((a,b)=>b.ts-a.ts);
+    log('Built '+trades.length+' valid trades (price=$'+price.toFixed(6)+')');
+
+    // Score wallets
+    setSt('Scoring...',1);
     await proc();
-    buildJackpots();
-    renderFeed();
-    renderJackpots();
-    renderLB();
-    updCounts();
-    updPrizePool();
-    setSt('LIVE · Cronos Explorer pool stream',1);
+    buildJackpots();renderFeed();renderJackpots();renderLB();updCounts();updPrizePool();
+    setSt('LIVE · '+(usedRpcFallback?'RPC (fresh)':result.source),1);
+
   }catch(e){
-    log('Pool sync error: '+e.message);
+    log('Error: '+e.message);
     setSt('Error, retry 30s',0);
-    if(!trades.length)$('feedBody').innerHTML='<div class="tbe">Error loading pool transactions. Retrying in 30s...</div>';
-  }finally{
-    fetchInProgress=false;
+    $('feedBody').innerHTML='<div class="tbe">Error loading data. Retrying in 30s...</div>';
   }
 }
 
@@ -715,7 +836,7 @@ async function proc(){
 function renderFeed(){
   const fb=$('feedBody');
   const feedTrades=trades.slice(0,60);
-  if(!feedTrades.length){fb.innerHTML='<div class="tbe">No pool trades found yet.</div>';return}
+  if(!feedTrades.length){fb.innerHTML='<div class="tbe">No season trades yet.</div>';return}
   fb.innerHTML='';
   feedTrades.forEach((tr,i)=>{
     const row=document.createElement('div');
