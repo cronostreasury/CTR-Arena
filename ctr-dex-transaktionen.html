@@ -76,18 +76,10 @@ a{color:var(--acc);text-decoration:none}
 <script>
 const CTR='0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC'.toLowerCase();
 const LP='0xf118aa245b0627b4752607620d0048b492a5f4fb'.toLowerCase();
-const TAX_WALLET='0x96A6cd06338eFE754f200Aba9fF07788c16E5F20'.toLowerCase();
 const DEC=18;
 const API_KEY='ckey_951452f88ecf7e';
-const ROUTER_WALLETS=new Set([
-  '0x8ebc409998ef75661a4c464ff9bbb490586f954a',
-  '0x145863eb42cf62847a6ca784e6416c1682b1b2ae',
-  '0x145677fc4d9b8f19b5d56d1820c48e0443049a30'
-]);
-
 let allTrades=[];
 let ctrPrice=0;
-const txSenderCache=new Map();
 
 const el=id=>document.getElementById(id);
 const status=(t)=>el('status').textContent=t;
@@ -134,27 +126,6 @@ async function fetchAllTransfers(){
   return [];
 }
 
-async function fetchTxSender(hash){
-  const h=(hash||'').toLowerCase();
-  if(!h) return null;
-  if(txSenderCache.has(h)) return txSenderCache.get(h);
-
-  const endpoints=[
-    `https://cronos.org/explorer/api?module=proxy&action=eth_getTransactionByHash&txhash=${h}`,
-    `https://api.cronoscan.com/api?module=proxy&action=eth_getTransactionByHash&txhash=${h}&apikey=YourApiKeyToken`
-  ];
-
-  for(const url of endpoints){
-    try{
-      const d=await jfetch(url,15000);
-      const sender=(d?.result?.from||'').toLowerCase();
-      if(sender){txSenderCache.set(h,sender);return sender;}
-    }catch(e){/* next */}
-  }
-  txSenderCache.set(h,null);
-  return null;
-}
-
 function normalize(tx){
   const from=(tx.from||'').toLowerCase();
   const to=(tx.to||'').toLowerCase();
@@ -170,20 +141,6 @@ function normalize(tx){
   const hash=(tx.hash||tx.transactionHash||'').toLowerCase();
 
   return {type:isBuy?'buy':'sell',wallet,ctr,usd:ctr*ctrPrice,ts,hash};
-}
-
-async function hydrateRealTraderWallets(rows){
-  const candidates=rows.slice(0,1200).filter(r=>ROUTER_WALLETS.has(r.wallet)||r.wallet===TAX_WALLET);
-  if(!candidates.length) return;
-
-  status(`Löse echte Trader auf (${candidates.length}) …`);
-  for(let i=0;i<candidates.length;i+=8){
-    const batch=candidates.slice(i,i+8);
-    await Promise.all(batch.map(async r=>{
-      const sender=await fetchTxSender(r.hash);
-      if(sender) r.wallet=sender;
-    }));
-  }
 }
 
 function applyFilters(){
@@ -218,15 +175,8 @@ async function loadAll(){
   status('Starte Abruf …');
   await fetchPrice();
   const raw=await fetchAllTransfers();
-  const normalized=raw.map(normalize).filter(Boolean).sort((a,b)=>b.ts-a.ts);
-
-  await hydrateRealTraderWallets(normalized);
-
-  const before=normalized.length;
-  allTrades=normalized.filter(r=>r.wallet!==TAX_WALLET);
-  const removed=before-allTrades.length;
-
-  status(`Aktualisiert: ${new Date().toISOString().replace('T',' ').slice(0,19)} UTC · ${allTrades.length} Trades${removed?` · ${removed} Tax-Wallet TX ausgeblendet`:''}`);
+  allTrades=raw.map(normalize).filter(Boolean).sort((a,b)=>b.ts-a.ts);
+  status(`Aktualisiert: ${new Date().toISOString().replace('T',' ').slice(0,19)} UTC · ${allTrades.length} Trades`);
   applyFilters();
 }
 
