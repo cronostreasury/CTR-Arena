@@ -1,6 +1,6 @@
 const CTR_CONTRACT   = '0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC'
 const LP_PAD  = '0x000000000000000000000xf118aa245b0627b4752607620d0048b492a5f4fb'.slice(0,66)
-const RPC_URL = 'https://evm.cronos.org'
+const RPC_URL = 'https://cronos-evm.publicnode.com'
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 
 function pad(addr) {
