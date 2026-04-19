@@ -7,7 +7,7 @@ const VAULT_WALLET   = '0x96A6cd06338eFE754f200Aba9fF07788c16E5F20'
 const DEAD_WALLET    = '0x000000000000000000000000000000000000dEaD'
 const RPC_URL        = 'https://evm.cronos.org'
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
-const BLOCK_CHUNK    = 8000
+const BLOCK_CHUNK    = 2000
 const BLOCKS_BACK    = 14400  // ~24h at 6s/block
 const MAX_RESOLVE    = 60
 
