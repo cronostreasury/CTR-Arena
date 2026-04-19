@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:         #060608;
+  --surface:    #0d0d10;
+  --surface2:   #141418;
+  --border:     #1e1e24;
+  --border2:    #2a2a32;
+  --text:       #e8e8f0;
+  --muted:      #5a5a70;
+  --muted2:     #8080a0;
+  --gold:       #f0a930;
+  --gold-dim:   rgba(240,169,48,0.08);
+  --gold-glow:  rgba(240,169,48,0.22);
+  --green:      #00d084;
+  --green-dim:  rgba(0,208,132,0.08);
+  --red:        #ff3d55;
+  --red-dim:    rgba(255,61,85,0.08);
+  --blue:       #5b9cf6;
+  --radius:     6px;
+  --font-head:  'Syne', sans-serif;
+  --font-mono:  'JetBrains Mono', monospace;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-head);
+  min-height: 100vh;
+}
+
+/* scanline texture */
+body::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.025) 2px,
+    rgba(0,0,0,0.025) 4px
+  );
+  z-index: 9999;
+}
+
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
