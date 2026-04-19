@@ -1,5 +1,3 @@
-// api/transactions.js - optimiert fuer Vercel Free Tier (10s timeout)
-
 const CTR_CONTRACT   = '0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC'
 const LP_ADDRESS     = '0xf118aa245b0627b4752607620d0048b492a5f4fb'
 const VAULT_WALLET   = '0x96A6cd06338eFE754f200Aba9fF07788c16E5F20'
@@ -41,7 +39,7 @@ async function getLogs(fromBlock, toBlock) {
   return result || []
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Cache-Control', 's-maxage=20, stale-while-revalidate=40')
 
@@ -74,7 +72,11 @@ export default async function handler(req, res) {
       else if (toTopic === LP_PAD) type = 'SELL'
       else                         type = 'TRANSFER'
       const trader = type === 'BUY' ? toAddr : fromAddr
-      txs.push({ hash: log.transactionHash, block, type, amount, trader, from: fromAddr, to: toAddr, timestamp: now - (latestBlock - block) * 6 })
+      txs.push({
+        hash: log.transactionHash, block, type, amount, trader,
+        from: fromAddr, to: toAddr,
+        timestamp: now - (latestBlock - block) * 6,
+      })
     }
 
     txs.sort((a, b) => b.block - a.block)
@@ -85,7 +87,15 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       transactions: txs,
-      stats: { total: txs.length, buyCount: buys.length, sellCount: sells.length, buyVolume: buyVol, sellVolume: sellVol, traders: new Set(txs.map(t => t.trader)).size, latestBlock }
+      stats: {
+        total: txs.length,
+        buyCount: buys.length,
+        sellCount: sells.length,
+        buyVolume: buyVol,
+        sellVolume: sellVol,
+        traders: new Set(txs.map(t => t.trader)).size,
+        latestBlock,
+      }
     })
   } catch (err) {
     console.error('[CTR API]', err.message)
