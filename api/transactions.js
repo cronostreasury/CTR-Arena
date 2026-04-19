@@ -2,14 +2,13 @@ const CTR_CONTRACT = '0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC'
 const LP    = '0xf118aa245b0627b4752607620d0048b492a5f4fb'
 const VAULT = '0x96a6cd06338efe754f200aba9ff07788c16e5f20'
 const DEAD  = '0x000000000000000000000000000000000000dead'
-const API_KEY = 'ckey_951452f88ecf7e'
+const API_KEY = 'JhU1OvkEIUYYcBCnlfahIcPeu6DIGt7k'
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Cache-Control', 's-maxage=20, stale-while-revalidate=40')
   try {
-    // LP-Adresse als address -> holt alle CTR Trades durch den Pool
-    const url = `https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx?contractaddress=${CTR_CONTRACT}&address=${LP}&page=1&offset=200&sort=desc&apikey=${API_KEY}`
+    const url = `https://api.cronoscan.com/api?module=account&action=tokentx&contractaddress=${CTR_CONTRACT}&address=${LP}&page=1&offset=200&sort=desc&apikey=${API_KEY}`
     const r    = await fetch(url)
     const data = await r.json()
 
