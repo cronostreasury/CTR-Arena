@@ -5,7 +5,7 @@ const DEAD_WALLET    = '0x000000000000000000000000000000000000dEaD'
 const RPC_URL        = 'https://evm.cronos.org'
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 const BLOCK_CHUNK    = 2000
-const BLOCKS_BACK    = 6000
+const BLOCKS_BACK    = 40000
 
 function pad(addr) {
   return '0x000000000000000000000000' + addr.slice(2).toLowerCase()
