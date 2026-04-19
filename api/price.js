@@ -1,22 +1,15 @@
-// api/price.js
-// Vercel Serverless Function - fetcht DexScreener server-side
-
 const CTR_CONTRACT = '0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC'
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET')
   res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60')
 
   try {
     const r    = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${CTR_CONTRACT}`)
     const data = await r.json()
-
     const pair = (data?.pairs || []).find(p => p.chainId === 'cronos') ?? data?.pairs?.[0]
 
-    if (!pair) {
-      return res.status(200).json({ price: 0, change24h: 0, volume24h: 0, liquidity: 0, mcap: 0 })
-    }
+    if (!pair) return res.status(200).json({ price: 0, change24h: 0, volume24h: 0, liquidity: 0, mcap: 0 })
 
     res.status(200).json({
       price:     parseFloat(pair.priceUsd           ?? '0'),
@@ -25,9 +18,7 @@ export default async function handler(req, res) {
       liquidity: parseFloat(pair.liquidity?.usd     ?? '0'),
       mcap:      parseFloat(pair.marketCap          ?? '0'),
     })
-
   } catch (err) {
-    console.error('[CTR Price API]', err.message)
     res.status(500).json({ error: err.message })
   }
 }
