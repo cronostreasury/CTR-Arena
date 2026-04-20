@@ -20,12 +20,9 @@
     html,body { background:var(--bg); color:var(--text); font-family:var(--head); min-height:100vh; }
     body::before { content:''; pointer-events:none; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px); z-index:9999; }
     .wrap { max-width:1280px; margin:0 auto; padding:0 24px 80px; }
-    a { color:inherit; text-decoration:none; }
-    button { cursor:pointer; font-family:inherit; }
-
+    a { color:inherit; text-decoration:none; } button { cursor:pointer; font-family:inherit; }
     .nav-back { display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; color:var(--muted); padding:8px 0; margin-top:16px; transition:color .15s; }
     .nav-back:hover { color:var(--gold); }
-
     header { display:flex; align-items:center; justify-content:space-between; padding:20px 0 28px; border-bottom:1px solid var(--border); margin-bottom:28px; flex-wrap:wrap; gap:16px; }
     .logo { display:flex; align-items:center; gap:14px; }
     .logo-mark { width:40px; height:40px; background:var(--gold); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:600; font-size:12px; color:#060608; box-shadow:0 0 20px var(--gold-glow); }
@@ -42,7 +39,6 @@
     #ctrPrice { font-family:var(--mono); font-size:14px; font-weight:600; color:var(--gold); }
     #priceChange { font-family:var(--mono); font-size:11px; }
     .pos { color:var(--green); } .neg { color:var(--red); }
-
     .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:24px; }
     .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px 20px; position:relative; overflow:hidden; }
     .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
@@ -51,21 +47,20 @@
     .card-val   { font-size:26px; font-weight:800; letter-spacing:-1px; line-height:1; }
     .card-val.gold{color:var(--gold)} .card-val.green{color:var(--green)} .card-val.red{color:var(--red)}
     .card-sub   { font-family:var(--mono); font-size:11px; color:var(--muted2); margin-top:6px; }
-
     .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:12px; }
     .tabs { display:flex; gap:4px; }
     .tab { font-family:var(--mono); font-size:12px; padding:7px 16px; border-radius:4px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; }
-    .tab.a-all   { background:var(--gold-dim);  border-color:var(--gold);  color:var(--gold); }
-    .tab.a-buy   { background:var(--green-dim); border-color:var(--green); color:var(--green); }
-    .tab.a-sell  { background:var(--red-dim);   border-color:var(--red);   color:var(--red); }
-    .tab.a-trans { background:rgba(91,156,246,0.08); border-color:var(--blue); color:var(--blue); }
+    .tab.a-all{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+    .tab.a-buy{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+    .tab.a-sell{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+    .tab.a-trans{background:rgba(91,156,246,0.08);border-color:var(--blue);color:var(--blue)}
     .toolbar-r { display:flex; align-items:center; gap:12px; }
     #lastUpdate { font-family:var(--mono); font-size:11px; color:var(--muted); }
+    #progress { font-family:var(--mono); font-size:11px; color:var(--gold); }
     #refreshBtn { font-family:var(--mono); font-size:11px; padding:7px 14px; border-radius:4px; border:1px solid var(--border2); background:var(--surface); color:var(--muted2); cursor:pointer; display:flex; align-items:center; gap:6px; }
     #refreshBtn:hover { border-color:var(--gold); color:var(--gold); }
     .spin svg { animation:rotate .8s linear infinite; }
     @keyframes rotate { to{transform:rotate(360deg)} }
-
     .tbl-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow-x:auto; }
     table { width:100%; border-collapse:collapse; }
     thead tr { background:var(--surface2); }
@@ -75,9 +70,9 @@
     tbody tr:hover { background:var(--surface2); }
     td { padding:13px 16px; font-size:13px; vertical-align:middle; white-space:nowrap; }
     .badge { font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:1px; padding:3px 9px; border-radius:3px; text-transform:uppercase; }
-    .badge-BUY      { background:var(--green-dim); color:var(--green); border:1px solid rgba(0,208,132,0.2); }
-    .badge-SELL     { background:var(--red-dim);   color:var(--red);   border:1px solid rgba(255,61,85,0.2); }
-    .badge-TRANSFER { background:rgba(91,156,246,0.08); color:var(--blue); border:1px solid rgba(91,156,246,0.2); }
+    .badge-BUY{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,208,132,0.2)}
+    .badge-SELL{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,61,85,0.2)}
+    .badge-TRANSFER{background:rgba(91,156,246,0.08);color:var(--blue);border:1px solid rgba(91,156,246,0.2)}
     .amt-BUY{font-family:var(--mono);font-weight:600;color:var(--green)}
     .amt-SELL{font-family:var(--mono);font-weight:600;color:var(--red)}
     .amt-TRANSFER{font-family:var(--mono);font-weight:600;color:var(--text)}
@@ -88,11 +83,9 @@
     .hash-link { font-family:var(--mono); font-size:12px; color:var(--blue); opacity:.7; }
     .hash-link:hover { opacity:1; }
     .state-cell { text-align:center; padding:60px 16px; font-family:var(--mono); font-size:13px; color:var(--muted); }
-
     footer { border-top:1px solid var(--border); padding-top:20px; margin-top:40px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; }
     .foot { font-family:var(--mono); font-size:11px; color:var(--muted); }
     .foot span { color:var(--muted2); }
-
     #toast { position:fixed; bottom:24px; right:24px; background:var(--surface2); border:1px solid var(--border2); border-radius:var(--r); padding:12px 20px; font-family:var(--mono); font-size:12px; color:var(--gold); opacity:0; transform:translateY(8px); transition:all .2s; pointer-events:none; z-index:100; }
     #toast.show { opacity:1; transform:translateY(0); }
   </style>
@@ -130,8 +123,8 @@
 
   <div class="cards">
     <div class="card gold"><div class="card-label">Volume (24h)</div><div class="card-val gold" id="sTotalVol">--</div><div class="card-sub" id="sTotalUSD">-- USD</div></div>
-    <div class="card green"><div class="card-label">Buy Volume</div><div class="card-val green" id="sBuyVol">--</div><div class="card-sub" id="sBuyCount">0 buys</div></div>
-    <div class="card red"><div class="card-label">Sell Volume</div><div class="card-val red" id="sSellVol">--</div><div class="card-sub" id="sSellCount">0 sells</div></div>
+    <div class="card green"><div class="card-label">Buy Volume (24h)</div><div class="card-val green" id="sBuyVol">--</div><div class="card-sub" id="sBuyCount">0 buys</div></div>
+    <div class="card red"><div class="card-label">Sell Volume (24h)</div><div class="card-val red" id="sSellVol">--</div><div class="card-sub" id="sSellCount">0 sells</div></div>
     <div class="card blue"><div class="card-label">Unique Traders</div><div class="card-val" id="sTraders">--</div><div class="card-sub" id="sTxCount">0 transactions</div></div>
   </div>
 
@@ -143,6 +136,7 @@
       <button class="tab"       onclick="setFilter('TRANSFER',this)">Transfers</button>
     </div>
     <div class="toolbar-r">
+      <span id="progress"></span>
       <span id="lastUpdate"></span>
       <button id="refreshBtn" onclick="refresh()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
@@ -160,7 +154,7 @@
 
   <footer>
     <div class="foot">Contract: <span>0xF367...21FC</span> | LP: <span>0xf118...4fb</span> | Network: <span>Cronos EVM</span></div>
-    <div class="foot">Data: <span>Cronos RPC</span> + <span>DexScreener</span></div>
+    <div class="foot">Data: <span>Cronos RPC</span> + <span>DexScreener</span> via <span>Vercel</span></div>
   </footer>
 </div>
 
@@ -175,7 +169,8 @@ const DEAD  = '0x000000000000000000000000000000000000dead'
 const RPC   = 'https://evm.cronos.org'
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 const CHUNK = 2000
-const CACHE_KEY = 'ctr_tracker_v3'
+// scan back: 30 chunks = 60k blocks = ~4 days of coverage
+const MAX_CHUNKS = 30
 
 function pad(addr){ return '0x000000000000000000000000' + addr.slice(2).toLowerCase() }
 const LP_PAD    = pad(LP)
@@ -200,12 +195,14 @@ async function rpcCall(method, params) {
   if(json.error) throw new Error(json.error.message)
   return json.result
 }
-
 async function getBlockNumber() { return parseInt(await rpcCall('eth_blockNumber',[]),16) }
-
 async function getLogs(from, to) {
   const r = await rpcCall('eth_getLogs',[{ address:CTR, topics:[TRANSFER_TOPIC], fromBlock:'0x'+from.toString(16), toBlock:'0x'+to.toString(16) }])
   return r || []
+}
+async function getBlockTimestamp(blockNum) {
+  const b = await rpcCall('eth_getBlockByNumber', ['0x'+blockNum.toString(16), false])
+  return b ? parseInt(b.timestamp, 16) : null
 }
 
 // ── PRICE (via Vercel API) ─────────────────────────────────────────
@@ -232,20 +229,27 @@ async function fetchPrice() {
 
 // ── FETCH TXS (direct RPC from browser) ───────────────────────────
 async function fetchTxs() {
+  const progEl = document.getElementById('progress')
   try {
     const latest = await getBlockNumber()
-    const now    = Math.floor(Date.now()/1000)
 
-    // scan backwards until we find at least 50 txs, max 30 chunks (~7 days)
+    // Scan ALL chunks backwards - collect everything first
     let allLogs = []
-    for(let i=0; i<30; i++){
+    for(let i=0; i<MAX_CHUNKS; i++){
       const toBlock   = latest - i*CHUNK
-      const fromBlock = toBlock - CHUNK
+      const fromBlock = toBlock - CHUNK + 1
       if(fromBlock < 0) break
-      const logs = await getLogs(fromBlock, toBlock)
-      if(logs.length > 0) allLogs = allLogs.concat(logs)
-      if(allLogs.length >= 150) break
+      progEl.textContent = `Scanning ${i+1}/${MAX_CHUNKS}...`
+      try {
+        const logs = await getLogs(fromBlock, toBlock)
+        allLogs = allLogs.concat(logs)
+      } catch(e){ console.warn('chunk failed',i,e.message) }
     }
+    progEl.textContent = ''
+
+    // get latest block timestamp for reference (real, not estimated)
+    const latestTs = await getBlockTimestamp(latest)
+    const SECS_PER_BLOCK = 6
 
     const txs = []
     for(const log of allLogs){
@@ -263,31 +267,43 @@ async function fetchTxs() {
       if(ft===LP_PAD)      type='BUY'
       else if(tt===LP_PAD) type='SELL'
       else                 type='TRANSFER'
-      txs.push({ hash:log.transactionHash, block, type, amount, trader:type==='BUY'?toAddr:fromAddr, from:fromAddr, to:toAddr, timestamp:now-(latest-block)*6 })
+      const timestamp = latestTs - (latest - block) * SECS_PER_BLOCK
+      txs.push({ hash:log.transactionHash, block, type, amount, trader:type==='BUY'?toAddr:fromAddr, from:fromAddr, to:toAddr, timestamp })
     }
 
+    // sort newest first, dedupe by hash (same tx may have multiple logs)
     txs.sort((a,b)=>b.block-a.block)
-    allTxs = txs
+    const seen = new Set()
+    allTxs = txs.filter(tx => {
+      const key = tx.hash + '-' + tx.from + '-' + tx.to + '-' + tx.amount.toFixed(4)
+      if(seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
 
-    const buys    = txs.filter(t=>t.type==='BUY')
-    const sells   = txs.filter(t=>t.type==='SELL')
-    const buyVol  = buys.reduce((s,t)=>s+t.amount,0)
-    const sellVol = sells.reduce((s,t)=>s+t.amount,0)
-    const tv      = buyVol+sellVol
+    // Stats only for last 24h for the volume cards
+    const now24h = Date.now()/1000 - 86400
+    const recent24h = allTxs.filter(t => t.timestamp >= now24h)
+    const buys24h   = recent24h.filter(t=>t.type==='BUY')
+    const sells24h  = recent24h.filter(t=>t.type==='SELL')
+    const buyVol24  = buys24h.reduce((s,t)=>s+t.amount,0)
+    const sellVol24 = sells24h.reduce((s,t)=>s+t.amount,0)
+    const tv24      = buyVol24 + sellVol24
 
-    document.getElementById('sTotalVol').textContent  = fmt(tv)+' CTR'
-    document.getElementById('sTotalUSD').textContent  = ctrPrice>0 ? fmtUSD(tv*ctrPrice) : '-- USD'
-    document.getElementById('sBuyVol').textContent    = fmt(buyVol)+' CTR'
-    document.getElementById('sBuyCount').textContent  = buys.length+' buys'
-    document.getElementById('sSellVol').textContent   = fmt(sellVol)+' CTR'
-    document.getElementById('sSellCount').textContent = sells.length+' sells'
-    document.getElementById('sTraders').textContent   = new Set(txs.map(t=>t.trader)).size
-    document.getElementById('sTxCount').textContent   = txs.length+' transactions'
+    document.getElementById('sTotalVol').textContent  = fmt(tv24)+' CTR'
+    document.getElementById('sTotalUSD').textContent  = ctrPrice>0 ? fmtUSD(tv24*ctrPrice) : '-- USD'
+    document.getElementById('sBuyVol').textContent    = fmt(buyVol24)+' CTR'
+    document.getElementById('sBuyCount').textContent  = buys24h.length+' buys'
+    document.getElementById('sSellVol').textContent   = fmt(sellVol24)+' CTR'
+    document.getElementById('sSellCount').textContent = sells24h.length+' sells'
+    document.getElementById('sTraders').textContent   = new Set(allTxs.map(t=>t.trader)).size
+    document.getElementById('sTxCount').textContent   = allTxs.length+' transactions'
     document.getElementById('lastUpdate').textContent = 'Updated '+new Date().toLocaleTimeString()
 
     renderTable()
   } catch(e){
-    showToast('RPC error: '+e.message.slice(0,50))
+    progEl.textContent = ''
+    showToast('RPC error: '+e.message.slice(0,60))
     console.error(e)
   }
 }
@@ -321,14 +337,12 @@ function setFilter(f, btn){
   btn.classList.add(m[f])
   renderTable()
 }
-
 async function refresh(){
   const btn=document.getElementById('refreshBtn')
   btn.classList.add('spin')
   await Promise.all([fetchPrice(), fetchTxs()])
   btn.classList.remove('spin')
 }
-
 function showToast(msg){
   const el=document.getElementById('toast')
   el.textContent=msg; el.classList.add('show')
