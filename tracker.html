@@ -8,201 +8,96 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #060608;
-      --surface:   #0d0d10;
-      --surface2:  #141418;
-      --border:    #1e1e24;
-      --border2:   #2a2a32;
-      --text:      #e8e8f0;
-      --muted:     #5a5a70;
-      --muted2:    #8080a0;
-      --gold:      #f0a930;
-      --gold-dim:  rgba(240,169,48,0.08);
-      --gold-glow: rgba(240,169,48,0.22);
-      --green:     #00d084;
-      --green-dim: rgba(0,208,132,0.08);
-      --red:       #ff3d55;
-      --red-dim:   rgba(255,61,85,0.08);
-      --blue:      #5b9cf6;
-      --r:         6px;
-      --mono:      'JetBrains Mono', monospace;
-      --head:      'Syne', sans-serif;
+      --bg:#060608; --surface:#0d0d10; --surface2:#141418; --border:#1e1e24; --border2:#2a2a32;
+      --text:#e8e8f0; --muted:#5a5a70; --muted2:#8080a0;
+      --gold:#f0a930; --gold-dim:rgba(240,169,48,0.08); --gold-glow:rgba(240,169,48,0.22);
+      --green:#00d084; --green-dim:rgba(0,208,132,0.08);
+      --red:#ff3d55; --red-dim:rgba(255,61,85,0.08);
+      --blue:#5b9cf6; --r:6px;
+      --mono:'JetBrains Mono',monospace; --head:'Syne',sans-serif;
     }
+    html,body { background:var(--bg); color:var(--text); font-family:var(--head); min-height:100vh; }
+    body::before { content:''; pointer-events:none; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px); z-index:9999; }
+    .wrap { max-width:1280px; margin:0 auto; padding:0 24px 80px; }
+    a { color:inherit; text-decoration:none; }
+    button { cursor:pointer; font-family:inherit; }
 
-    html, body { background: var(--bg); color: var(--text); font-family: var(--head); min-height: 100vh; }
+    .nav-back { display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; color:var(--muted); padding:8px 0; margin-top:16px; transition:color .15s; }
+    .nav-back:hover { color:var(--gold); }
 
-    body::before {
-      content: '';
-      pointer-events: none;
-      position: fixed; inset: 0;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px);
-      z-index: 9999;
-    }
+    header { display:flex; align-items:center; justify-content:space-between; padding:20px 0 28px; border-bottom:1px solid var(--border); margin-bottom:28px; flex-wrap:wrap; gap:16px; }
+    .logo { display:flex; align-items:center; gap:14px; }
+    .logo-mark { width:40px; height:40px; background:var(--gold); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:600; font-size:12px; color:#060608; box-shadow:0 0 20px var(--gold-glow); }
+    .logo-name { font-size:20px; font-weight:800; letter-spacing:-.5px; }
+    .logo-sub  { font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:1px; }
+    .hdr-right { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+    .market-meta { display:flex; gap:20px; font-family:var(--mono); font-size:11px; color:var(--muted2); }
+    .market-meta strong { color:var(--text); }
+    .live { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--muted2); }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(0,208,132,0.5)} 70%{box-shadow:0 0 0 6px rgba(0,208,132,0)} 100%{box-shadow:0 0 0 0 rgba(0,208,132,0)} }
+    .price-pill { background:var(--surface); border:1px solid var(--border2); border-radius:30px; padding:8px 16px; display:flex; align-items:center; gap:10px; }
+    .price-label { font-family:var(--mono); font-size:11px; color:var(--muted); }
+    #ctrPrice { font-family:var(--mono); font-size:14px; font-weight:600; color:var(--gold); }
+    #priceChange { font-family:var(--mono); font-size:11px; }
+    .pos { color:var(--green); } .neg { color:var(--red); }
 
-    .wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px 80px; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:24px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px 20px; position:relative; overflow:hidden; }
+    .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+    .card.gold::before{background:var(--gold)} .card.green::before{background:var(--green)} .card.red::before{background:var(--red)} .card.blue::before{background:var(--blue)}
+    .card-label { font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:10px; }
+    .card-val   { font-size:26px; font-weight:800; letter-spacing:-1px; line-height:1; }
+    .card-val.gold{color:var(--gold)} .card-val.green{color:var(--green)} .card-val.red{color:var(--red)}
+    .card-sub   { font-family:var(--mono); font-size:11px; color:var(--muted2); margin-top:6px; }
 
-    /* ── HEADER ── */
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 20px 0 28px; border-bottom: 1px solid var(--border);
-      margin-bottom: 28px; flex-wrap: wrap; gap: 16px;
-    }
-    .logo { display: flex; align-items: center; gap: 14px; }
-    .logo-mark {
-      width: 40px; height: 40px; background: var(--gold); border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--mono); font-weight: 600; font-size: 12px; color: #060608;
-      box-shadow: 0 0 20px var(--gold-glow);
-    }
-    .logo-name { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
-    .logo-sub  { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+    .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:12px; }
+    .tabs { display:flex; gap:4px; }
+    .tab { font-family:var(--mono); font-size:12px; padding:7px 16px; border-radius:4px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; }
+    .tab.a-all   { background:var(--gold-dim);  border-color:var(--gold);  color:var(--gold); }
+    .tab.a-buy   { background:var(--green-dim); border-color:var(--green); color:var(--green); }
+    .tab.a-sell  { background:var(--red-dim);   border-color:var(--red);   color:var(--red); }
+    .tab.a-trans { background:rgba(91,156,246,0.08); border-color:var(--blue); color:var(--blue); }
+    .toolbar-r { display:flex; align-items:center; gap:12px; }
+    #lastUpdate { font-family:var(--mono); font-size:11px; color:var(--muted); }
+    #refreshBtn { font-family:var(--mono); font-size:11px; padding:7px 14px; border-radius:4px; border:1px solid var(--border2); background:var(--surface); color:var(--muted2); cursor:pointer; display:flex; align-items:center; gap:6px; }
+    #refreshBtn:hover { border-color:var(--gold); color:var(--gold); }
+    .spin svg { animation:rotate .8s linear infinite; }
+    @keyframes rotate { to{transform:rotate(360deg)} }
 
-    .hdr-right { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .tbl-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    thead tr { background:var(--surface2); }
+    th { padding:12px 16px; text-align:left; font-family:var(--mono); font-size:10px; font-weight:500; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; border-bottom:1px solid var(--border); white-space:nowrap; }
+    tbody tr { border-bottom:1px solid var(--border); transition:background .1s; }
+    tbody tr:last-child { border-bottom:none; }
+    tbody tr:hover { background:var(--surface2); }
+    td { padding:13px 16px; font-size:13px; vertical-align:middle; white-space:nowrap; }
+    .badge { font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:1px; padding:3px 9px; border-radius:3px; text-transform:uppercase; }
+    .badge-BUY      { background:var(--green-dim); color:var(--green); border:1px solid rgba(0,208,132,0.2); }
+    .badge-SELL     { background:var(--red-dim);   color:var(--red);   border:1px solid rgba(255,61,85,0.2); }
+    .badge-TRANSFER { background:rgba(91,156,246,0.08); color:var(--blue); border:1px solid rgba(91,156,246,0.2); }
+    .amt-BUY{font-family:var(--mono);font-weight:600;color:var(--green)}
+    .amt-SELL{font-family:var(--mono);font-weight:600;color:var(--red)}
+    .amt-TRANSFER{font-family:var(--mono);font-weight:600;color:var(--text)}
+    .usd  { font-family:var(--mono); font-size:12px; color:var(--muted2); }
+    .time { font-family:var(--mono); font-size:12px; color:var(--muted); }
+    .addr-link { font-family:var(--mono); font-size:12px; color:var(--muted2); transition:color .15s; }
+    .addr-link:hover { color:var(--gold); }
+    .hash-link { font-family:var(--mono); font-size:12px; color:var(--blue); opacity:.7; }
+    .hash-link:hover { opacity:1; }
+    .state-cell { text-align:center; padding:60px 16px; font-family:var(--mono); font-size:13px; color:var(--muted); }
 
-    .market-meta { display: flex; gap: 20px; font-family: var(--mono); font-size: 11px; color: var(--muted2); }
-    .market-meta strong { color: var(--text); }
+    footer { border-top:1px solid var(--border); padding-top:20px; margin-top:40px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    .foot { font-family:var(--mono); font-size:11px; color:var(--muted); }
+    .foot span { color:var(--muted2); }
 
-    .live { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--muted2); }
-    .dot {
-      width: 8px; height: 8px; border-radius: 50%; background: var(--green);
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(0,208,132,0.5); }
-      70%  { box-shadow: 0 0 0 6px rgba(0,208,132,0); }
-      100% { box-shadow: 0 0 0 0 rgba(0,208,132,0); }
-    }
-
-    .price-pill {
-      background: var(--surface); border: 1px solid var(--border2); border-radius: 30px;
-      padding: 8px 16px; display: flex; align-items: center; gap: 10px;
-    }
-    .price-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-    #ctrPrice    { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--gold); }
-    #priceChange { font-family: var(--mono); font-size: 11px; }
-    .pos { color: var(--green); }
-    .neg { color: var(--red); }
-
-    /* ── STAT CARDS ── */
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
-    .card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 18px 20px; position: relative; overflow: hidden;
-    }
-    .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
-    .card.gold::before  { background: var(--gold); }
-    .card.green::before { background: var(--green); }
-    .card.red::before   { background: var(--red); }
-    .card.blue::before  { background: var(--blue); }
-
-    .card-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
-    .card-val   { font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
-    .card-val.gold  { color: var(--gold); }
-    .card-val.green { color: var(--green); }
-    .card-val.red   { color: var(--red); }
-    .card-sub   { font-family: var(--mono); font-size: 11px; color: var(--muted2); margin-top: 6px; }
-
-    /* ── TOOLBAR ── */
-    .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 12px; }
-    .tabs { display: flex; gap: 4px; }
-    .tab {
-      font-family: var(--mono); font-size: 12px; padding: 7px 16px;
-      border-radius: 4px; border: 1px solid var(--border); background: transparent;
-      color: var(--muted); cursor: pointer; transition: all 0.15s; letter-spacing: 0.5px;
-    }
-    .tab:hover { border-color: var(--border2); color: var(--text); }
-    .tab.a-all   { background: var(--gold-dim);  border-color: var(--gold);  color: var(--gold); }
-    .tab.a-buy   { background: var(--green-dim); border-color: var(--green); color: var(--green); }
-    .tab.a-sell  { background: var(--red-dim);   border-color: var(--red);   color: var(--red); }
-    .tab.a-trans { background: rgba(91,156,246,0.08); border-color: var(--blue); color: var(--blue); }
-
-    .toolbar-r { display: flex; align-items: center; gap: 12px; }
-    #lastUpdate { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-    #refreshBtn {
-      font-family: var(--mono); font-size: 11px; padding: 7px 14px;
-      border-radius: 4px; border: 1px solid var(--border2); background: var(--surface);
-      color: var(--muted2); cursor: pointer; display: flex; align-items: center; gap: 6px;
-      transition: all 0.15s;
-    }
-    #refreshBtn:hover { border-color: var(--gold); color: var(--gold); }
-    #refreshBtn svg { transition: transform 0.4s; }
-    .spin svg { animation: rotate 0.8s linear infinite; }
-    @keyframes rotate { to { transform: rotate(360deg); } }
-
-    /* ── TABLE ── */
-    .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
-    .tbl-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
-    thead tr { background: var(--surface2); }
-    th {
-      padding: 12px 16px; text-align: left; font-family: var(--mono);
-      font-size: 10px; font-weight: 500; color: var(--muted);
-      letter-spacing: 1.5px; text-transform: uppercase;
-      border-bottom: 1px solid var(--border); white-space: nowrap;
-    }
-    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
-    tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: var(--surface2); }
-    td { padding: 13px 16px; font-size: 13px; vertical-align: middle; white-space: nowrap; }
-
-    .badge {
-      font-family: var(--mono); font-size: 10px; font-weight: 600;
-      letter-spacing: 1px; padding: 3px 9px; border-radius: 3px; text-transform: uppercase;
-    }
-    .badge-BUY      { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,208,132,0.2); }
-    .badge-SELL     { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,61,85,0.2); }
-    .badge-TRANSFER { background: rgba(91,156,246,0.08); color: var(--blue); border: 1px solid rgba(91,156,246,0.2); }
-
-    .amt-BUY      { font-family: var(--mono); font-weight: 600; color: var(--green); }
-    .amt-SELL     { font-family: var(--mono); font-weight: 600; color: var(--red); }
-    .amt-TRANSFER { font-family: var(--mono); font-weight: 600; color: var(--text); }
-
-    .usd  { font-family: var(--mono); font-size: 12px; color: var(--muted2); }
-    .time { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-    .addr-link { font-family: var(--mono); font-size: 12px; color: var(--muted2); text-decoration: none; transition: color 0.15s; }
-    .addr-link:hover { color: var(--gold); }
-    .hash-link { font-family: var(--mono); font-size: 12px; color: var(--blue); text-decoration: none; opacity: 0.7; }
-    .hash-link:hover { opacity: 1; }
-
-    .state-cell { text-align: center; padding: 60px 16px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
-
-    /* ── FOOTER ── */
-    footer {
-      border-top: 1px solid var(--border); padding-top: 20px; margin-top: 40px;
-      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
-    }
-    .foot { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-    .foot span { color: var(--muted2); }
-
-    /* ── TOAST ── */
-    #toast {
-      position: fixed; bottom: 24px; right: 24px;
-      background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r);
-      padding: 12px 20px; font-family: var(--mono); font-size: 12px; color: var(--gold);
-      opacity: 0; transform: translateY(8px); transition: all 0.2s;
-      pointer-events: none; z-index: 100;
-    }
-    #toast.show { opacity: 1; transform: translateY(0); }
-
-    /* ── NAV BACK ── */
-    .nav-back {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-family: var(--mono); font-size: 11px; color: var(--muted);
-      text-decoration: none; padding: 8px 0; transition: color 0.15s;
-      margin-top: 16px; margin-bottom: 0;
-    }
-    .nav-back:hover { color: var(--gold); }
-
-    @media (max-width: 700px) {
-      td:nth-child(4), th:nth-child(4) { display: none; }
-      .market-meta { display: none; }
-    }
+    #toast { position:fixed; bottom:24px; right:24px; background:var(--surface2); border:1px solid var(--border2); border-radius:var(--r); padding:12px 20px; font-family:var(--mono); font-size:12px; color:var(--gold); opacity:0; transform:translateY(8px); transition:all .2s; pointer-events:none; z-index:100; }
+    #toast.show { opacity:1; transform:translateY(0); }
   </style>
 </head>
 <body>
-
 <div class="wrap">
 
   <a href="index.html" class="nav-back">
@@ -210,7 +105,6 @@
     Back to CTR Arena
   </a>
 
-  <!-- HEADER -->
   <header>
     <div class="logo">
       <div class="logo-mark">CTR</div>
@@ -234,218 +128,217 @@
     </div>
   </header>
 
-  <!-- STAT CARDS -->
   <div class="cards">
-    <div class="card gold">
-      <div class="card-label">Volume (24h)</div>
-      <div class="card-val gold" id="sTotalVol">--</div>
-      <div class="card-sub" id="sTotalUSD">-- USD</div>
-    </div>
-    <div class="card green">
-      <div class="card-label">Buy Volume</div>
-      <div class="card-val green" id="sBuyVol">--</div>
-      <div class="card-sub" id="sBuyCount">0 buys</div>
-    </div>
-    <div class="card red">
-      <div class="card-label">Sell Volume</div>
-      <div class="card-val red" id="sSellVol">--</div>
-      <div class="card-sub" id="sSellCount">0 sells</div>
-    </div>
-    <div class="card blue">
-      <div class="card-label">Unique Traders</div>
-      <div class="card-val" id="sTraders">--</div>
-      <div class="card-sub" id="sTxCount">0 transactions</div>
-    </div>
+    <div class="card gold"><div class="card-label">Volume (24h)</div><div class="card-val gold" id="sTotalVol">--</div><div class="card-sub" id="sTotalUSD">-- USD</div></div>
+    <div class="card green"><div class="card-label">Buy Volume</div><div class="card-val green" id="sBuyVol">--</div><div class="card-sub" id="sBuyCount">0 buys</div></div>
+    <div class="card red"><div class="card-label">Sell Volume</div><div class="card-val red" id="sSellVol">--</div><div class="card-sub" id="sSellCount">0 sells</div></div>
+    <div class="card blue"><div class="card-label">Unique Traders</div><div class="card-val" id="sTraders">--</div><div class="card-sub" id="sTxCount">0 transactions</div></div>
   </div>
 
-  <!-- TOOLBAR -->
   <div class="toolbar">
     <div class="tabs">
-      <button class="tab a-all"  onclick="setFilter('ALL',this)">All</button>
-      <button class="tab"        onclick="setFilter('BUY',this)">Buys</button>
-      <button class="tab"        onclick="setFilter('SELL',this)">Sells</button>
-      <button class="tab"        onclick="setFilter('TRANSFER',this)">Transfers</button>
+      <button class="tab a-all" onclick="setFilter('ALL',this)">All</button>
+      <button class="tab"       onclick="setFilter('BUY',this)">Buys</button>
+      <button class="tab"       onclick="setFilter('SELL',this)">Sells</button>
+      <button class="tab"       onclick="setFilter('TRANSFER',this)">Transfers</button>
     </div>
     <div class="toolbar-r">
       <span id="lastUpdate"></span>
       <button id="refreshBtn" onclick="refresh()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M23 4v6h-6M1 20v-6h6"/>
-          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-        </svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
         Refresh
       </button>
     </div>
   </div>
 
-  <!-- TABLE -->
   <div class="tbl-wrap">
     <table>
-      <thead>
-        <tr>
-          <th>Time</th><th>Type</th><th>Amount</th><th>Value</th><th>Trader</th><th>TX Hash</th>
-        </tr>
-      </thead>
-      <tbody id="tbody">
-        <tr><td colspan="6" class="state-cell">Loading transactions...</td></tr>
-      </tbody>
+      <thead><tr><th>Time</th><th>Type</th><th>Amount</th><th>Value</th><th>Trader</th><th>TX Hash</th></tr></thead>
+      <tbody id="tbody"><tr><td colspan="6" class="state-cell">Loading transactions...</td></tr></tbody>
     </table>
   </div>
 
-  <!-- FOOTER -->
   <footer>
     <div class="foot">Contract: <span>0xF367...21FC</span> | LP: <span>0xf118...4fb</span> | Network: <span>Cronos EVM</span></div>
-    <div class="foot">Data: <span>Cronos RPC</span> + <span>DexScreener</span> via <span>Vercel API</span></div>
+    <div class="foot">Data: <span>Cronos RPC</span> + <span>DexScreener</span></div>
   </footer>
-
 </div>
 
 <div id="toast"></div>
 
 <script>
-// ─── STATE ─────────────────────────────────────────────────────────
+// ── CONSTANTS ──────────────────────────────────────────────────────
+const CTR   = '0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC'
+const LP    = '0xf118aa245b0627b4752607620d0048b492a5f4fb'
+const VAULT = '0x96a6cd06338efe754f200aba9ff07788c16e5f20'
+const DEAD  = '0x000000000000000000000000000000000000dead'
+const RPC   = 'https://evm.cronos.org'
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+const CHUNK = 2000
+const CACHE_KEY = 'ctr_tracker_v3'
+
+function pad(addr){ return '0x000000000000000000000000' + addr.slice(2).toLowerCase() }
+const LP_PAD    = pad(LP)
+const VAULT_PAD = pad(VAULT)
+const DEAD_PAD  = pad(DEAD)
+
+// ── STATE ──────────────────────────────────────────────────────────
 let allTxs   = []
 let filter   = 'ALL'
 let ctrPrice = 0
-let loading  = true
 
-// ─── FORMAT HELPERS ────────────────────────────────────────────────
-const fmt = n => {
-  if (n >= 1e6) return (n/1e6).toFixed(2)+'M'
-  if (n >= 1e3) return (n/1e3).toFixed(1)+'K'
-  return n.toFixed(0)
-}
-const fmtUSD = n => {
-  if (!n || n <= 0) return '--'
-  if (n < 0.01)    return '<$0.01'
-  if (n >= 1e6)    return '$'+(n/1e6).toFixed(2)+'M'
-  if (n >= 1e3)    return '$'+(n/1e3).toFixed(1)+'K'
-  return '$'+n.toFixed(2)
-}
-const timeAgo = ts => {
-  const d = Math.floor(Date.now()/1000 - ts)
-  if (d < 60)   return d+'s ago'
-  if (d < 3600) return Math.floor(d/60)+'m ago'
-  if (d < 86400)return Math.floor(d/3600)+'h ago'
-  return Math.floor(d/86400)+'d ago'
-}
+// ── HELPERS ────────────────────────────────────────────────────────
+const fmt = n => { if(n>=1e6) return (n/1e6).toFixed(2)+'M'; if(n>=1e3) return (n/1e3).toFixed(1)+'K'; return n.toFixed(0) }
+const fmtUSD = n => { if(!n||n<=0) return '--'; if(n<0.01) return '<$0.01'; if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M'; if(n>=1e3) return '$'+(n/1e3).toFixed(1)+'K'; return '$'+n.toFixed(2) }
+const timeAgo = ts => { const d=Math.floor(Date.now()/1000-ts); if(d<60) return d+'s ago'; if(d<3600) return Math.floor(d/60)+'m ago'; if(d<86400) return Math.floor(d/3600)+'h ago'; return Math.floor(d/86400)+'d ago' }
 const short = a => a ? a.slice(0,6)+'...'+a.slice(-4) : '...'
 
-// ─── FETCH PRICE ───────────────────────────────────────────────────
+// ── RPC ────────────────────────────────────────────────────────────
+async function rpcCall(method, params) {
+  const res  = await fetch(RPC, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({jsonrpc:'2.0',id:1,method,params}) })
+  const json = await res.json()
+  if(json.error) throw new Error(json.error.message)
+  return json.result
+}
+
+async function getBlockNumber() { return parseInt(await rpcCall('eth_blockNumber',[]),16) }
+
+async function getLogs(from, to) {
+  const r = await rpcCall('eth_getLogs',[{ address:CTR, topics:[TRANSFER_TOPIC], fromBlock:'0x'+from.toString(16), toBlock:'0x'+to.toString(16) }])
+  return r || []
+}
+
+// ── PRICE (via Vercel API) ─────────────────────────────────────────
 async function fetchPrice() {
   try {
     const res  = await fetch('/api/price')
     const data = await res.json()
-    if (data.error) return
+    if(data.error) return
     ctrPrice = data.price || 0
-
     const p = ctrPrice
-    document.getElementById('ctrPrice').textContent =
-      p <= 0 ? '--' : p < 0.0001 ? `$${p.toFixed(8)}` : `$${p.toFixed(6)}`
-
+    document.getElementById('ctrPrice').textContent = p<=0?'--':p<0.0001?'$'+p.toFixed(8):'$'+p.toFixed(6)
     const el = document.getElementById('priceChange')
-    el.textContent = (data.change24h >= 0 ? '+' : '') + (data.change24h || 0).toFixed(2) + '%'
-    el.className = data.change24h >= 0 ? 'pos' : 'neg'
-
-    // market meta
+    el.textContent = (data.change24h>=0?'+':'')+data.change24h.toFixed(2)+'%'
+    el.className = data.change24h>=0?'pos':'neg'
     const meta = document.getElementById('marketMeta')
-    if (data.mcap > 0 || data.liquidity > 0) {
+    if(data.mcap>0||data.liquidity>0){
       document.getElementById('mcap').textContent  = fmtUSD(data.mcap)
       document.getElementById('liq').textContent   = fmtUSD(data.liquidity)
       document.getElementById('vol24').textContent = fmtUSD(data.volume24h)
-      meta.style.display = 'flex'
+      meta.style.display='flex'
     }
-  } catch(e) { console.warn('Price fetch failed', e.message) }
+  } catch(e){ console.warn('Price error',e.message) }
 }
 
-// ─── FETCH TRANSACTIONS ────────────────────────────────────────────
+// ── FETCH TXS (direct RPC from browser) ───────────────────────────
 async function fetchTxs() {
   try {
-    const res  = await fetch('/api/transactions')
-    const data = await res.json()
-    if (data.error) { showToast('API error: '+data.error.slice(0,50)); return }
+    const latest = await getBlockNumber()
+    const now    = Math.floor(Date.now()/1000)
 
-    allTxs = data.transactions || []
-    const s = data.stats || {}
-
-    // update stats
-    const tv = (s.buyVolume||0) + (s.sellVolume||0)
-    document.getElementById('sTotalVol').textContent  = fmt(tv)+' CTR'
-    document.getElementById('sTotalUSD').textContent  = ctrPrice > 0 ? fmtUSD(tv * ctrPrice) : '-- USD'
-    document.getElementById('sBuyVol').textContent    = fmt(s.buyVolume||0)+' CTR'
-    document.getElementById('sBuyCount').textContent  = (s.buyCount||0)+' buys'
-    document.getElementById('sSellVol').textContent   = fmt(s.sellVolume||0)+' CTR'
-    document.getElementById('sSellCount').textContent = (s.sellCount||0)+' sells'
-    document.getElementById('sTraders').textContent   = s.traders||0
-    document.getElementById('sTxCount').textContent   = (s.total||0)+' transactions'
-
-    document.getElementById('lastUpdate').textContent = 'Updated '+new Date().toLocaleTimeString()
-    renderTable()
-  } catch(e) {
-    showToast('Fetch failed')
-    console.error(e)
-    if (loading) {
-      document.getElementById('tbody').innerHTML =
-        `<tr><td colspan="6" class="state-cell">Error loading data. Retrying...</td></tr>`
+    // scan backwards until we find at least 50 txs, max 30 chunks (~7 days)
+    let allLogs = []
+    for(let i=0; i<30; i++){
+      const toBlock   = latest - i*CHUNK
+      const fromBlock = toBlock - CHUNK
+      if(fromBlock < 0) break
+      const logs = await getLogs(fromBlock, toBlock)
+      if(logs.length > 0) allLogs = allLogs.concat(logs)
+      if(allLogs.length >= 150) break
     }
-  } finally {
-    loading = false
+
+    const txs = []
+    for(const log of allLogs){
+      if(log.topics.length < 3) continue
+      const ft = log.topics[1]
+      const tt = log.topics[2]
+      if(tt === VAULT_PAD) continue
+      if(tt === DEAD_PAD)  continue
+      const amount = parseInt(log.data,16)/1e18
+      if(amount < 1) continue
+      const fromAddr = ('0x'+ft.slice(26)).toLowerCase()
+      const toAddr   = ('0x'+tt.slice(26)).toLowerCase()
+      const block    = parseInt(log.blockNumber,16)
+      let type
+      if(ft===LP_PAD)      type='BUY'
+      else if(tt===LP_PAD) type='SELL'
+      else                 type='TRANSFER'
+      txs.push({ hash:log.transactionHash, block, type, amount, trader:type==='BUY'?toAddr:fromAddr, from:fromAddr, to:toAddr, timestamp:now-(latest-block)*6 })
+    }
+
+    txs.sort((a,b)=>b.block-a.block)
+    allTxs = txs
+
+    const buys    = txs.filter(t=>t.type==='BUY')
+    const sells   = txs.filter(t=>t.type==='SELL')
+    const buyVol  = buys.reduce((s,t)=>s+t.amount,0)
+    const sellVol = sells.reduce((s,t)=>s+t.amount,0)
+    const tv      = buyVol+sellVol
+
+    document.getElementById('sTotalVol').textContent  = fmt(tv)+' CTR'
+    document.getElementById('sTotalUSD').textContent  = ctrPrice>0 ? fmtUSD(tv*ctrPrice) : '-- USD'
+    document.getElementById('sBuyVol').textContent    = fmt(buyVol)+' CTR'
+    document.getElementById('sBuyCount').textContent  = buys.length+' buys'
+    document.getElementById('sSellVol').textContent   = fmt(sellVol)+' CTR'
+    document.getElementById('sSellCount').textContent = sells.length+' sells'
+    document.getElementById('sTraders').textContent   = new Set(txs.map(t=>t.trader)).size
+    document.getElementById('sTxCount').textContent   = txs.length+' transactions'
+    document.getElementById('lastUpdate').textContent = 'Updated '+new Date().toLocaleTimeString()
+
+    renderTable()
+  } catch(e){
+    showToast('RPC error: '+e.message.slice(0,50))
+    console.error(e)
   }
 }
 
-// ─── RENDER TABLE ──────────────────────────────────────────────────
-function renderTable() {
-  const rows = (filter === 'ALL' ? allTxs : allTxs.filter(t => t.type === filter)).slice(0,200)
-  if (!rows.length) {
-    document.getElementById('tbody').innerHTML =
-      `<tr><td colspan="6" class="state-cell">No ${filter.toLowerCase()} transactions found</td></tr>`
+// ── RENDER ─────────────────────────────────────────────────────────
+function renderTable(){
+  const rows = (filter==='ALL'?allTxs:allTxs.filter(t=>t.type===filter)).slice(0,200)
+  if(!rows.length){
+    document.getElementById('tbody').innerHTML=`<tr><td colspan="6" class="state-cell">No ${filter.toLowerCase()} transactions found</td></tr>`
     return
   }
-
   const EXP = 'https://explorer.cronos.org'
   document.getElementById('tbody').innerHTML = rows.map(tx => {
-    const usd = ctrPrice > 0 ? fmtUSD(tx.amount * ctrPrice) : '--'
-    return `
-      <tr>
-        <td class="time">${timeAgo(tx.timestamp)}</td>
-        <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
-        <td class="amt-${tx.type}">${fmt(tx.amount)} CTR</td>
-        <td class="usd">${usd}</td>
-        <td><a class="addr-link" href="${EXP}/address/${tx.trader||tx.from}" target="_blank">${short(tx.trader||tx.from)}</a></td>
-        <td><a class="hash-link" href="${EXP}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0,8)}...</a></td>
-      </tr>`
+    const usd = ctrPrice>0 ? fmtUSD(tx.amount*ctrPrice) : '--'
+    return `<tr>
+      <td class="time">${timeAgo(tx.timestamp)}</td>
+      <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
+      <td class="amt-${tx.type}">${fmt(tx.amount)} CTR</td>
+      <td class="usd">${usd}</td>
+      <td><a class="addr-link" href="${EXP}/address/${tx.trader}" target="_blank">${short(tx.trader)}</a></td>
+      <td><a class="hash-link" href="${EXP}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0,8)}...</a></td>
+    </tr>`
   }).join('')
 }
 
-// ─── UI ────────────────────────────────────────────────────────────
-function setFilter(f, btn) {
-  filter = f
-  document.querySelectorAll('.tab').forEach(t => {
-    t.className = 'tab'
-  })
-  const map = { ALL:'a-all', BUY:'a-buy', SELL:'a-sell', TRANSFER:'a-trans' }
-  btn.classList.add(map[f])
+// ── UI ─────────────────────────────────────────────────────────────
+function setFilter(f, btn){
+  filter=f
+  document.querySelectorAll('.tab').forEach(t=>t.className='tab')
+  const m={ALL:'a-all',BUY:'a-buy',SELL:'a-sell',TRANSFER:'a-trans'}
+  btn.classList.add(m[f])
   renderTable()
 }
 
-async function refresh() {
-  const btn = document.getElementById('refreshBtn')
+async function refresh(){
+  const btn=document.getElementById('refreshBtn')
   btn.classList.add('spin')
   await Promise.all([fetchPrice(), fetchTxs()])
   btn.classList.remove('spin')
 }
 
-function showToast(msg) {
-  const el = document.getElementById('toast')
-  el.textContent = msg
-  el.classList.add('show')
-  setTimeout(() => el.classList.remove('show'), 3000)
+function showToast(msg){
+  const el=document.getElementById('toast')
+  el.textContent=msg; el.classList.add('show')
+  setTimeout(()=>el.classList.remove('show'),3000)
 }
 
-// ─── INIT ──────────────────────────────────────────────────────────
+// ── INIT ───────────────────────────────────────────────────────────
 refresh()
-setInterval(refresh, 30_000)
-setInterval(renderTable, 15_000)  // refresh timeAgo labels
+setInterval(refresh, 30000)
+setInterval(renderTable, 15000)
 </script>
 </body>
 </html>
