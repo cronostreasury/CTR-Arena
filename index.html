@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CTR Arena – CTR Token Tracker · Cronos EVM</title>
+  <meta name="description" content="Live Transaction Tracker für den CTR Token auf Cronos EVM – Supply, Volumen, Holders und Transfers." />
+  <meta name="theme-color" content="#07090d" />
+  <link rel="preconnect" href="https://api.cronoscan.com" crossorigin />
+  <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2300e5a8'/><text x='50%25' y='54%25' text-anchor='middle' dominant-baseline='middle' font-family='monospace' font-weight='800' font-size='13' fill='%23062018'>CTR</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/css/style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <div class="brand">
+        <div class="brand-mark">CTR</div>
+        <div>
+          <div class="brand-name">CTR Arena</div>
+        </div>
+        <span class="brand-tag">Cronos EVM</span>
+      </div>
+      <nav class="nav-actions">
+        <button id="refresh-btn" class="btn" title="Refresh">↻ Refresh</button>
+        <a id="explorer-link" class="btn btn-primary" href="#" target="_blank" rel="noopener">View on Cronoscan ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="hero-inner">
+          <div>
+            <h1><span class="accent">CTR</span> Token Arena</h1>
+            <p>Live-Tracking für den CTR Token auf Cronos EVM. Supply, Volumen, Wallets und jeder On-Chain-Transfer – direkt aus der Chain.</p>
+          </div>
+          <div class="hero-meta">
+            <span class="pill" id="status"><span class="dot"></span>connecting…</span>
+            <a id="contract-link" class="address-pill" href="#" target="_blank" rel="noopener" title="Contract auf Cronoscan öffnen">
+              <span class="mono" id="contract-display">0x…</span>
+              <button id="copy-addr" type="button" title="Adresse kopieren">⧉</button>
+            </a>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="label">Total Supply</div>
+            <div class="value mono" id="stat-supply">—</div>
+            <div class="sub" id="stat-supply-sub">&nbsp;</div>
+          </div>
+          <div class="stat">
+            <div class="label">24h Transfers</div>
+            <div class="value mono" id="stat-tx24">—</div>
+            <div class="sub" id="stat-tx24-sub">&nbsp;</div>
+          </div>
+          <div class="stat">
+            <div class="label">24h Volume</div>
+            <div class="value mono" id="stat-volume">—</div>
+            <div class="sub" id="stat-volume-sub">&nbsp;</div>
+          </div>
+          <div class="stat">
+            <div class="label">Active Wallets 24h</div>
+            <div class="value mono" id="stat-wallets">—</div>
+            <div class="sub" id="stat-wallets-sub">&nbsp;</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Volume &amp; Transfers · last 24h</h2>
+          <span class="hint">hourly buckets</span>
+        </div>
+        <div class="card">
+          <div class="chart-wrap">
+            <canvas id="volume-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Recent Transfers</h2>
+          <span class="hint"><span id="tx-count">0</span> shown</span>
+        </div>
+        <div class="card">
+          <div class="tx-toolbar">
+            <div class="search">
+              <span class="icon mono">⌕</span>
+              <input id="search-input" type="text" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Filter by address or tx hash…" />
+            </div>
+            <span class="hint">click row to open on Cronoscan</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="tx-table">
+              <thead>
+                <tr>
+                  <th>Tx Hash</th>
+                  <th class="col-block">Block</th>
+                  <th class="col-time">Age</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody id="tx-body">
+                <tr><td class="loading" colspan="6"><span class="spinner"></span>loading from Cronoscan…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>CTR Arena · built for Cronos EVM · data via <a href="https://cronoscan.com" target="_blank" rel="noopener">Cronoscan</a></div>
+      <div>not financial advice · token tracking for informational purposes only</div>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+
+  <!-- App -->
+  <script src="./assets/js/config.js" defer></script>
+  <script src="./assets/js/app.js" defer></script>
+</body>
+</html>
