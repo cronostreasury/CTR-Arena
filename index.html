@@ -1,3 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CTR Arena – Buy &amp; Sell Tracker · Cronos EVM</title>
+  <meta name="description" content="Live buy &amp; sell tracker for the CTR Token on Cronos EVM – swaps, volume, and on-chain transfers." />
+  <meta name="theme-color" content="#07090d" />
+  <link rel="preconnect" href="https://api.cronoscan.com" crossorigin />
+  <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2300e5a8'/><text x='50%25' y='54%25' text-anchor='middle' dominant-baseline='middle' font-family='monospace' font-weight='800' font-size='13' fill='%23062018'>CTR</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/css/style.css" />
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -314,6 +329,91 @@
 </head>
 <body>
     <div class="container">
+      <div class="brand">
+        <div class="brand-mark">CTR</div>
+        <div>
+          <div class="brand-name">CTR Arena</div>
+        </div>
+        <span class="brand-tag">Cronos EVM</span>
+      </div>
+      <nav class="nav-actions">
+        <button id="refresh-btn" class="btn" title="Refresh">↻ Refresh</button>
+        <a id="explorer-link" class="btn btn-primary" href="#" target="_blank" rel="noopener">View on Cronoscan ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="hero-inner">
+          <div>
+            <h1><span class="accent">CTR</span> Buy &amp; Sell Tracker</h1>
+            <p>Real-time buy &amp; sell detection for CTR on Cronos EVM. DEX swaps are classified automatically using on-chain pair discovery.</p>
+          </div>
+          <div class="hero-meta">
+            <span class="pill" id="status"><span class="dot"></span>connecting…</span>
+            <a id="contract-link" class="address-pill" href="#" target="_blank" rel="noopener" title="Open contract on Cronoscan">
+              <span class="mono" id="contract-display">0x…</span>
+              <button id="copy-addr" type="button" title="Copy address">⧉</button>
+            </a>
+            <span class="pill mono" id="pair-status" style="font-size:11px">detecting pairs…</span>
+          </div>
+        </div>
+
+        <!-- Buy/Sell ratio bar -->
+        <div id="buysell-bar" class="buysell-bar" style="display:none">
+          <span class="buysell-label-buy"></span>
+          <div class="buysell-track">
+            <div class="buysell-fill-buy"></div>
+          </div>
+          <span class="buysell-label-sell"></span>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="label">Total Supply</div>
+            <div class="value mono" id="stat-supply">—</div>
+            <div class="sub" id="stat-supply-sub">&nbsp;</div>
+          </div>
+          <div class="stat stat-buy">
+            <div class="label">24h Buys</div>
+            <div class="value mono accent-buy" id="stat-buys">—</div>
+            <div class="sub" id="stat-buys-sub">&nbsp;</div>
+          </div>
+          <div class="stat stat-sell">
+            <div class="label">24h Sells</div>
+            <div class="value mono accent-sell" id="stat-sells">—</div>
+            <div class="sub" id="stat-sells-sub">&nbsp;</div>
+          </div>
+          <div class="stat">
+            <div class="label">24h Volume</div>
+            <div class="value mono" id="stat-volume">—</div>
+            <div class="sub" id="stat-volume-sub">&nbsp;</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Buy vs Sell Volume · last 24h</h2>
+          <span class="hint">hourly buckets · stacked</span>
+        </div>
+        <div class="card">
+          <div class="chart-wrap">
+            <canvas id="volume-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Transactions</h2>
+          <span class="hint"><span id="tx-count">0</span> shown</span>
         <header>
             <h1>🪙 CTR Token Tracker</h1>
             <p>Cronos EVM Chain Analytics</p>
@@ -385,8 +485,37 @@
                 <button class="btn-sell" onclick="addTransaction('sell')">✓ Record Sell</button>
                 <button class="btn-reset" onclick="resetForm()">⟲ Clear</button>
             </div>
+            <div class="type-filters">
+              <button class="type-filter-btn active" data-filter="all">All</button>
+              <button class="type-filter-btn" data-filter="buy">Buys</button>
+              <button class="type-filter-btn" data-filter="sell">Sells</button>
+              <button class="type-filter-btn" data-filter="transfer">Transfers</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="tx-table">
+              <thead>
+                <tr>
+                  <th class="col-type">Type</th>
+                  <th>Tx Hash</th>
+                  <th class="col-block">Block</th>
+                  <th class="col-time">Age</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody id="tx-body">
+                <tr><td class="loading" colspan="7"><span class="spinner"></span>loading from Cronoscan…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
+  <footer class="site-footer">
+    <div class="container">
+      <div>CTR Arena · Cronos EVM · data via <a href="https://cronoscan.com" target="_blank" rel="noopener">Cronoscan</a></div>
+      <div>not financial advice · for informational purposes only</div>
         <!-- Transactions Table -->
         <div class="transactions">
             <h2>Transaction History</h2>
@@ -524,6 +653,11 @@
             }
         }
 
+  <!-- ethers.js v5 – used for on-chain DEX pair discovery -->
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
         function deleteTransaction(id) {
             if (confirm('Are you sure you want to delete this transaction?')) {
                 transactions = transactions.filter(tx => tx.id !== id);
