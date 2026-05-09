@@ -107,54 +107,85 @@ async function fetchJson(url, opts = {}, timeoutMs = 30000) {
 
 /**
  * Fetch ALL CTR token transfers involving the LP pair, paginated.
+ * Tries multiple API sources in order: BlockScout (proven), Cronos Explorer v1/v2.
  * Stops early when we go past the season start (results are sorted desc).
  */
 async function fetchAllTransfers() {
-  const all = [];
-  for (let page = 1; page <= 5; page++) {
-    const url = `https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx`
-      + `?contractaddress=${CTR}`
-      + `&address=${LP}`
-      + `&page=${page}`
-      + `&offset=10000`
-      + `&sort=desc`
-      + `&apikey=${API_KEY}`;
+  // Multiple API sources — first one that returns valid data wins
+  const sources = [
+    {
+      name: 'BlockScout',
+      url: page => `https://cronos.org/explorer/api`
+        + `?module=account&action=tokentx`
+        + `&contractaddress=${CTR}`
+        + `&address=${LP}`
+        + `&page=${page}&offset=10000&sort=desc`
+    },
+    {
+      name: 'Cronos Explorer v1',
+      url: page => `https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx`
+        + `?contractaddress=${CTR}`
+        + `&address=${LP}`
+        + `&page=${page}&offset=10000&sort=desc`
+        + `&apikey=${API_KEY}`
+    },
+    {
+      name: 'Cronos Explorer v2',
+      url: page => `https://explorer-api.cronos.org/mainnet/api/v2/account/tokentx`
+        + `?contractaddress=${CTR}`
+        + `&address=${LP}`
+        + `&page=${page}&offset=10000&sort=desc`
+        + `&apikey=${API_KEY}`
+    }
+  ];
 
-    let d;
+  let lastErr;
+  for (const src of sources) {
+    console.log(`  Trying ${src.name}...`);
     try {
-      d = await fetchJson(url);
-    } catch (e) {
-      if (page === 1) throw e;
-      console.warn(`  Page ${page} failed: ${e.message}`);
-      break;
-    }
-
-    if (d.status !== '1' || !Array.isArray(d.result)) {
-      if (page === 1) {
-        // Some APIs return result without status field
-        if (Array.isArray(d.result) && d.result.length > 0) {
-          d.status = '1';
-        } else {
-          throw new Error(`API page ${page} returned no data: ${d.message || 'unknown'}`);
+      const all = [];
+      for (let page = 1; page <= 5; page++) {
+        let d;
+        try {
+          d = await fetchJson(src.url(page));
+        } catch (e) {
+          if (page === 1) throw e;
+          console.warn(`    Page ${page} failed: ${e.message}`);
+          break;
         }
-      } else {
-        break;
+
+        // Etherscan-compatible: status='1' means success, status='0' means empty result
+        const ok = (d.status === '1' && Array.isArray(d.result))
+                || (Array.isArray(d.result) && d.result.length > 0);
+        if (!ok) {
+          if (page === 1) throw new Error(`No data (status=${d.status}, msg=${d.message || 'unknown'})`);
+          break;
+        }
+
+        let stopHere = false;
+        for (const tx of d.result) {
+          const ts = parseInt(tx.timeStamp || '0');
+          if (ts < SS_TS) { stopHere = true; break; }
+          all.push(tx);
+        }
+        console.log(`    Page ${page}: ${d.result.length} transfers (${all.length} total in season window)`);
+
+        if (stopHere) break;
+        if (d.result.length < 10000) break;
+        await sleep(300);
       }
-    }
 
-    let stopHere = false;
-    for (const tx of d.result) {
-      const ts = parseInt(tx.timeStamp || '0');
-      if (ts < SS_TS) { stopHere = true; break; }
-      all.push(tx);
+      if (all.length > 0) {
+        console.log(`  ✓ ${src.name} succeeded with ${all.length} transfers`);
+        return all;
+      }
+    } catch (e) {
+      console.warn(`  ${src.name} failed: ${e.message}`);
+      lastErr = e;
     }
-    console.log(`  Page ${page}: ${d.result.length} transfers (${all.length} total in season)`);
-
-    if (stopHere) break;
-    if (d.result.length < 10000) break;
-    await sleep(300);
   }
-  return all;
+
+  throw new Error(`All transfer sources failed. Last error: ${lastErr?.message}`);
 }
 
 async function fetchPrice() {
