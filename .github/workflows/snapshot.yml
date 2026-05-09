@@ -1,0 +1,48 @@
+name: Build Season Snapshot
+
+on:
+  schedule:
+    # Every 5 minutes (GitHub may delay during high load)
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/build-snapshot.js'
+      - '.github/workflows/snapshot.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build snapshot
+        env:
+          CRONOS_API_KEY: ${{ secrets.CRONOS_API_KEY }}
+        run: node scripts/build-snapshot.js
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/season.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "snapshot: $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
