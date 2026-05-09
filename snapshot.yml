@@ -17,6 +17,11 @@ concurrency:
   group: snapshot
   cancel-in-progress: false
 
+# Opt into Node.js 24 for GitHub's internal JS actions (checkout, upload-artifact, etc.)
+# Without this, runs log a deprecation warning until June 2, 2026.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,7 +33,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Build snapshot
         env:
