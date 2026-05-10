@@ -237,12 +237,50 @@ async function fetchBalance(addr) {
   }
 }
 
+async function rpcGetTxFrom(hash) {
+  try {
+    const tx = await rpcCall('eth_getTransactionByHash', [hash]);
+    if (tx && tx.from) return tx.from.toLowerCase();
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Resolve every unique tx hash → tx.from (the real user EOA that signed the tx).
+ * This is the only reliable way to identify the actual trader on router-mediated trades.
+ * Returns a map: hash → real-trader-address.
+ */
+async function resolveRealTraders(transfers) {
+  const uniqueHashes = [...new Set(transfers.map(t => (t.hash || '').toLowerCase()).filter(Boolean))];
+  const map = {};
+  console.log(`  Resolving ${uniqueHashes.length} unique tx senders via RPC...`);
+
+  let resolved = 0, failed = 0;
+  for (let i = 0; i < uniqueHashes.length; i += 15) {
+    const batch = uniqueHashes.slice(i, i + 15);
+    const results = await Promise.all(batch.map(h => rpcGetTxFrom(h)));
+    batch.forEach((h, j) => {
+      if (results[j]) { map[h] = results[j]; resolved++; }
+      else failed++;
+    });
+    if (i + 15 < uniqueHashes.length) await sleep(120);
+    if ((i / 15) % 20 === 0 && i > 0) {
+      console.log(`    Progress: ${resolved}/${uniqueHashes.length} resolved`);
+    }
+  }
+  console.log(`  Resolved ${resolved} txs (${failed} failed)`);
+  return map;
+}
+
 // ====================== BUILDERS ======================
 
-function buildTrades(transfers, price) {
+function buildTrades(transfers, price, txFromMap) {
   const lp = LP.toLowerCase();
   const seen = new Set();
   const trades = [];
+  let unresolved = 0;
 
   for (const tx of transfers) {
     const ts = parseInt(tx.timeStamp || '0');
@@ -262,7 +300,12 @@ function buildTrades(transfers, price) {
     const isSell = to   === lp && from !== lp;
     if (!isBuy && !isSell) continue;
 
-    const trader = isBuy ? to : from;
+    // The REAL trader is whoever signed the tx (always an EOA), NOT the
+    // direct counterparty of the transfer (which is often a router contract).
+    const trader = txFromMap[hash];
+    if (!trader) { unresolved++; continue; }
+
+    // Filter known non-user addresses (the LP, the contract itself, zero, etc.)
     if (EX.has(trader) || NON_USER_ADDRS.has(trader)) continue;
 
     const decimals = parseInt(tx.tokenDecimal || DEC);
@@ -284,6 +327,7 @@ function buildTrades(transfers, price) {
     });
   }
 
+  if (unresolved > 0) console.log(`  WARN: ${unresolved} transfers skipped (tx.from could not be resolved)`);
   return trades.sort((a, b) => b.t - a.t);
 }
 
@@ -362,11 +406,11 @@ async function main() {
   console.log('Time:', new Date().toISOString());
   console.log('Season start:', SS.toISOString(), `(${Math.floor((Date.now()/1000 - SS_TS) / 86400)} days ago)`);
 
-  console.log('\n[1/5] Fetching DexScreener market data...');
+  console.log('\n[1/6] Fetching DexScreener market data...');
   const market = await fetchPrice();
   console.log(`  Price: $${market.price.toFixed(6)} | 24h: ${market.change24h.toFixed(2)}% | Vol: $${market.volume24h.toFixed(0)} | Liq: $${market.liquidity.toFixed(0)}`);
 
-  console.log('\n[2/5] Fetching transfers from Cronos Explorer...');
+  console.log('\n[2/6] Fetching transfers from explorer...');
   const transfers = await fetchAllTransfers();
   console.log(`  Total: ${transfers.length} transfers in season window`);
 
@@ -374,18 +418,21 @@ async function main() {
     throw new Error('Zero transfers returned — preserving previous snapshot.');
   }
 
-  console.log('\n[3/5] Building trades...');
-  const trades = buildTrades(transfers, market.price);
+  console.log('\n[3/6] Resolving real trader EOAs (tx.from for each tx)...');
+  const txFromMap = await resolveRealTraders(transfers);
+
+  console.log('\n[4/6] Building trades...');
+  const trades = buildTrades(transfers, market.price, txFromMap);
   const totalBuys  = trades.filter(t => t.ty === 'buy').length;
   const totalSells = trades.filter(t => t.ty === 'sell').length;
   console.log(`  Filtered: ${trades.length} trades (${totalBuys} buys, ${totalSells} sells)`);
 
-  console.log('\n[4/5] Computing jackpots...');
+  console.log('\n[5/6] Computing jackpots...');
   const jackpots = buildJackpots(trades);
   const prizePool = jackpots.reduce((s, j) => s + j.refund, 0);
   console.log(`  Jackpot wins: ${jackpots.length} | Total refunds: $${prizePool.toFixed(2)}`);
 
-  console.log('\n[5/5] Building wallets and scoring...');
+  console.log('\n[6/6] Building wallets and scoring...');
   const wallets = await buildWallets(trades);
   const totalBuyVolume  = wallets.reduce((s, w) => s + w.bV, 0);
   const totalSellVolume = wallets.reduce((s, w) => s + w.sV, 0);
