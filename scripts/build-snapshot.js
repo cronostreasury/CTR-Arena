@@ -274,6 +274,68 @@ async function resolveRealTraders(transfers) {
   return map;
 }
 
+/**
+ * Fetch CTR Transfer events involving the LP for the last N hours, directly via RPC.
+ * Bypasses BlockScout indexing lag — gives real-time data straight from the chain.
+ * Used to supplement bulk historical data (which BlockScout handles fine).
+ */
+async function fetchRecentTransfersRPC(hoursBack) {
+  const TRANSFER_SIG = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  const lpPadded = '0x' + '0'.repeat(24) + LP.slice(2).toLowerCase();
+
+  // Latest block
+  const latestHex = await rpcCall('eth_blockNumber', []);
+  const latest = parseInt(latestHex, 16);
+  // Cronos: ~5s block time
+  const blocksBack = Math.ceil(hoursBack * 3600 / 5);
+  const fromBlockNum = Math.max(0, latest - blocksBack);
+  const fromBlock = '0x' + fromBlockNum.toString(16);
+
+  console.log(`  Querying eth_getLogs for last ${hoursBack}h (~${blocksBack} blocks, ${fromBlockNum} → ${latest})...`);
+
+  // Two queries: LP as sender, LP as receiver
+  let fromLPlogs = [], toLPlogs = [];
+  try {
+    [fromLPlogs, toLPlogs] = await Promise.all([
+      rpcCall('eth_getLogs', [{ address: CTR, fromBlock, toBlock: 'latest', topics: [TRANSFER_SIG, lpPadded, null] }]),
+      rpcCall('eth_getLogs', [{ address: CTR, fromBlock, toBlock: 'latest', topics: [TRANSFER_SIG, null, lpPadded] }])
+    ]);
+  } catch (e) {
+    console.warn(`  eth_getLogs failed: ${e.message}`);
+    return [];
+  }
+
+  const allLogs = [...(fromLPlogs || []), ...(toLPlogs || [])];
+  console.log(`  Got ${allLogs.length} raw Transfer events from RPC (${fromLPlogs?.length || 0} from LP, ${toLPlogs?.length || 0} to LP)`);
+  if (!allLogs.length) return [];
+
+  // Fetch block timestamps (batched)
+  const uniqueBlocks = [...new Set(allLogs.map(l => l.blockNumber))];
+  const blockTimes = {};
+  for (let i = 0; i < uniqueBlocks.length; i += 10) {
+    const batch = uniqueBlocks.slice(i, i + 10);
+    const blocks = await Promise.all(batch.map(bn =>
+      rpcCall('eth_getBlockByNumber', [bn, false]).catch(() => null)
+    ));
+    batch.forEach((bn, j) => {
+      if (blocks[j]?.timestamp) blockTimes[bn] = parseInt(blocks[j].timestamp, 16);
+    });
+    if (i + 10 < uniqueBlocks.length) await sleep(80);
+  }
+
+  // Convert to standard transfer format
+  return allLogs.map(log => ({
+    hash: log.transactionHash,
+    from: '0x' + log.topics[1].slice(26),
+    to: '0x' + log.topics[2].slice(26),
+    value: BigInt(log.data || '0x0').toString(),
+    timeStamp: (blockTimes[log.blockNumber] || 0).toString(),
+    tokenDecimal: String(DEC),
+    blockNumber: parseInt(log.blockNumber, 16).toString(),
+    _source: 'rpc'
+  })).filter(t => parseInt(t.timeStamp) >= SS_TS);
+}
+
 // ====================== BUILDERS ======================
 
 function buildTrades(transfers, price, txFromMap) {
@@ -411,8 +473,44 @@ async function main() {
   console.log(`  Price: $${market.price.toFixed(6)} | 24h: ${market.change24h.toFixed(2)}% | Vol: $${market.volume24h.toFixed(0)} | Liq: $${market.liquidity.toFixed(0)}`);
 
   console.log('\n[2/6] Fetching transfers from explorer...');
-  const transfers = await fetchAllTransfers();
-  console.log(`  Total: ${transfers.length} transfers in season window`);
+  const bulkTransfers = await fetchAllTransfers();
+  console.log(`  BlockScout: ${bulkTransfers.length} transfers in season window`);
+
+  // Supplement with last 24h of fresh data via RPC (BlockScout has indexing lag)
+  console.log('  Supplementing with eth_getLogs for fresh data (BlockScout has indexing lag)...');
+  let freshTransfers = [];
+  try {
+    freshTransfers = await fetchRecentTransfersRPC(24);
+    console.log(`  RPC fresh: ${freshTransfers.length} transfers in last 24h`);
+  } catch (e) {
+    console.warn(`  RPC supplement failed (continuing with BlockScout only): ${e.message}`);
+  }
+
+  // Merge + dedup by hash:from:to
+  const seenKeys = new Set();
+  const transfers = [];
+  for (const t of [...freshTransfers, ...bulkTransfers]) {
+    const h = (t.hash || '').toLowerCase();
+    const f = (t.from || '').toLowerCase();
+    const to = (t.to || '').toLowerCase();
+    const key = `${h}:${f}:${to}`;
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    transfers.push(t);
+  }
+  const dupes = freshTransfers.length + bulkTransfers.length - transfers.length;
+  console.log(`  Merged: ${transfers.length} unique transfers (${dupes} duplicates removed)`);
+
+  // Diagnostic: show newest 3 transfers
+  if (transfers.length > 0) {
+    transfers.sort((a, b) => parseInt(b.timeStamp) - parseInt(a.timeStamp));
+    console.log(`  Newest transfers in dataset:`);
+    transfers.slice(0, 3).forEach(t => {
+      const ago = Math.floor((Date.now()/1000 - parseInt(t.timeStamp)) / 60);
+      const src = t._source === 'rpc' ? 'RPC' : 'BS';
+      console.log(`    [${src}] ${ago}m ago | hash=${t.hash?.slice(0,16)}... | ${t.from?.slice(0,8)} → ${t.to?.slice(0,8)}`);
+    });
+  }
 
   if (transfers.length === 0) {
     throw new Error('Zero transfers returned — preserving previous snapshot.');
@@ -426,6 +524,15 @@ async function main() {
   const totalBuys  = trades.filter(t => t.ty === 'buy').length;
   const totalSells = trades.filter(t => t.ty === 'sell').length;
   console.log(`  Filtered: ${trades.length} trades (${totalBuys} buys, ${totalSells} sells)`);
+
+  // Diagnostic: show newest 3 trades
+  if (trades.length > 0) {
+    console.log(`  Newest trades:`);
+    trades.slice(0, 3).forEach(t => {
+      const ago = Math.floor((Date.now()/1000 - t.t) / 60);
+      console.log(`    ${ago}m ago | ${t.ty.toUpperCase().padEnd(4)} | ${t.w.slice(0,12)}... | ${t.ctr.toFixed(0)} CTR | $${t.usd.toFixed(2)}`);
+    });
+  }
 
   console.log('\n[5/6] Computing jackpots...');
   const jackpots = buildJackpots(trades);
