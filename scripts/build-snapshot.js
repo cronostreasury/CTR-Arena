@@ -27,8 +27,10 @@ const DEC          = 18;
 const SD           = 30;        // Season duration in days
 const TAX_RATE     = 0.10;
 const JACKPOT_MIN_BUY = 10;     // USD
-const SS           = new Date('2026-03-20T00:00:00Z');
+const SS           = new Date('2026-05-15T00:00:00Z');
 const SS_TS        = Math.floor(SS.getTime() / 1000);
+const SE           = new Date(SS.getTime() + SD * 86400 * 1000); // Season end
+const SE_TS        = Math.floor(SE.getTime() / 1000);
 
 const RPC_LIST = [
   'https://evm.cronos.org',
@@ -195,7 +197,10 @@ async function fetchAllTransfers() {
       timeStamp: ts.toString(),
       tokenDecimal: String(DEC)
     };
-  }).filter(t => parseInt(t.timeStamp) >= SS_TS);
+  }).filter(t => {
+    const ts = parseInt(t.timeStamp);
+    return ts >= SS_TS && ts < SE_TS;
+  });
 
   // Sort newest first
   transfers.sort((a, b) => parseInt(b.timeStamp) - parseInt(a.timeStamp));
@@ -299,7 +304,7 @@ function buildTrades(transfers, price, txFromMap) {
 
   for (const tx of transfers) {
     const ts = parseInt(tx.timeStamp || '0');
-    if (!ts || ts < SS_TS) continue;
+    if (!ts || ts < SS_TS || ts >= SE_TS) continue;
 
     const from = (tx.from || '').toLowerCase();
     const to   = (tx.to   || '').toLowerCase();
@@ -419,7 +424,17 @@ async function main() {
   const t0 = Date.now();
   console.log('=== CTR Season Snapshot Builder ===');
   console.log('Time:', new Date().toISOString());
-  console.log('Season start:', SS.toISOString(), `(${Math.floor((Date.now()/1000 - SS_TS) / 86400)} days ago)`);
+  const now = Math.floor(Date.now() / 1000);
+  let seasonStatus;
+  if (now < SS_TS) {
+    seasonStatus = `STARTS IN ${Math.ceil((SS_TS - now) / 86400)} days`;
+  } else if (now < SE_TS) {
+    seasonStatus = `Day ${Math.floor((now - SS_TS) / 86400) + 1} of ${SD} — ${Math.ceil((SE_TS - now) / 86400)} days remaining`;
+  } else {
+    seasonStatus = `ENDED ${Math.floor((now - SE_TS) / 86400)} days ago — leaderboard frozen`;
+  }
+  console.log('Season window:', SS.toISOString(), '→', SE.toISOString());
+  console.log('Status:       ', seasonStatus);
 
   console.log('\n[1/6] Fetching DexScreener market data...');
   const market = await fetchPrice();
@@ -504,6 +519,7 @@ async function main() {
   const snapshot = {
     updatedAt:   Math.floor(Date.now() / 1000),
     seasonStart: SS_TS,
+    seasonEnd:   SE_TS,
     seasonDays:  SD,
     market: {
       price:     market.price,
