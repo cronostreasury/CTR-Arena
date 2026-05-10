@@ -208,53 +208,6 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .rc .rp{font-family:'Manrope',sans-serif;font-weight:800;font-size:36px;color:var(--gold);margin:12px 0;line-height:1.2}
 .rc p{font-size:13px;color:var(--text2);line-height:1.7}
 
-.claim-section{background:linear-gradient(135deg,rgba(212,168,67,.04),rgba(100,255,218,.04));border:1px solid rgba(212,168,67,.2);border-radius:22px;padding:32px;position:relative;overflow:hidden;margin-bottom:32px}
-.claim-section::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--accent),var(--gold))}
-.claim-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px}
-.claim-title{font-family:'Manrope',sans-serif;font-weight:800;font-size:22px;color:var(--gold)}
-.claim-subtitle{font-size:13px;color:var(--text2);margin-top:4px}
-.prize-wallet-info{background:rgba(11,15,26,.8);border:1px solid var(--border2);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.prize-wallet-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em;flex-shrink:0}
-.prize-wallet-addr{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);word-break:break-all}
-.claim-input-row{display:flex;gap:12px;margin-bottom:16px}
-.claim-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);border:none;font-weight:700;font-size:13px;padding:14px 28px;border-radius:12px;cursor:pointer;transition:all .25s;white-space:nowrap;font-family:'Inter',sans-serif}
-.claim-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(212,168,67,.3)}
-.claim-result{display:none;margin-top:16px}
-.claim-reward-box{background:rgba(11,15,26,.9);border:1px solid var(--border2);border-radius:16px;overflow:hidden}
-.claim-reward-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.claim-reward-title{font-family:'Manrope',sans-serif;font-weight:700;font-size:14px}
-.claim-items{padding:16px 20px}
-.claim-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(30,45,74,.4)}
-.claim-item:last-child{border:none}
-.claim-item-left{display:flex;flex-direction:column;gap:4px}
-.claim-item-type{font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:.1em}
-.claim-item-amount{font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;color:var(--gold);line-height:1.3}
-.claim-item-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)}
-.claim-item-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);border:none;font-weight:700;font-size:11px;padding:8px 20px;border-radius:8px;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
-.claim-item-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(212,168,67,.3)}
-.claim-no-rewards{padding:40px 20px;text-align:center;color:var(--text4);font-size:13px}
-.claim-info-note{margin-top:12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);background:rgba(11,15,26,.6);border:1px solid var(--border);border-radius:10px;padding:10px 14px;line-height:1.7}
-.total-prize-pool{text-align:right}
-.total-prize-pool .tpl{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em}
-.total-prize-pool .tpv{font-family:'Manrope',sans-serif;font-weight:800;font-size:26px;color:var(--gold)}
-
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:999;display:none;align-items:center;justify-content:center;padding:20px}
-.modal-overlay.active{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:32px;max-width:480px;width:100%;position:relative;animation:fu .3s ease-out}
-.modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--accent));border-radius:20px 20px 0 0}
-.modal-close{position:absolute;top:16px;right:16px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text3);cursor:pointer;padding:4px 10px;font-size:14px;transition:all .2s}
-.modal-close:hover{color:var(--text);border-color:var(--border2)}
-.modal-title{font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;margin-bottom:8px;color:var(--gold)}
-.modal-sub{font-size:13px;color:var(--text2);margin-bottom:20px}
-.modal-steps{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:16px;margin-bottom:20px}
-.modal-step{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid rgba(30,45,74,.4);font-size:13px}
-.modal-step:last-child{border:none}
-.modal-step-num{width:22px;height:22px;border-radius:6px;background:var(--gold);color:var(--bg);font-family:'Manrope',sans-serif;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.modal-step-text{color:var(--text2);line-height:1.5}
-.modal-addr-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);word-break:break-all;margin-bottom:16px}
-.modal-confirm-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);border:none;font-weight:700;font-size:14px;padding:14px;border-radius:12px;cursor:pointer;width:100%;font-family:'Inter',sans-serif;transition:all .3s}
-.modal-confirm-btn:hover{box-shadow:0 6px 24px rgba(212,168,67,.35)}
-
 footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
 .fti{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
 .ftl{font-family:'DM Mono',monospace;font-size:11px;color:var(--text4)}.ftl .ftc{color:var(--text3);font-size:9px;display:block;margin-top:4px;word-break:break-all}
@@ -262,8 +215,19 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
 .ftsrc{margin-top:10px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);text-align:center}.ftsrc strong{color:var(--accent)}
 #debugLog{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px;max-height:90px;overflow-y:auto;display:none}
 
+/* Teaser overlay for Phase 2 features */
+.teaser-wrap{position:relative;border-radius:22px;overflow:hidden}
+.teaser-content{filter:blur(5px) saturate(.7);opacity:.55;pointer-events:none;user-select:none;transition:filter .4s,opacity .4s}
+.teaser-wrap:hover .teaser-content{filter:blur(3px) saturate(.8);opacity:.7}
+.teaser-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center,rgba(11,15,26,.45) 0%,rgba(11,15,26,.7) 100%)}
+.teaser-badge{background:linear-gradient(135deg,rgba(36,49,82,.95),rgba(17,24,39,.98));border:1px solid var(--border2);border-radius:18px;padding:24px 36px;text-align:center;backdrop-filter:blur(8px);box-shadow:0 12px 40px rgba(0,0,0,.5),0 0 0 1px rgba(212,168,67,.15);position:relative;max-width:440px}
+.teaser-badge::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--accent),var(--gold));border-radius:18px 18px 0 0}
+.teaser-badge-eyebrow{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.18em;text-transform:uppercase;font-weight:600;margin-bottom:10px}
+.teaser-badge-title{font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;color:var(--gold);letter-spacing:-.01em;line-height:1.2;margin-bottom:6px}
+.teaser-badge-sub{font-size:12px;color:var(--text2);line-height:1.5}
+
 @media(max-width:960px){.hero{grid-template-columns:1fr;text-align:center}.hero p{margin:0 auto 32px}.hero-btns{justify-content:center}.hero-img{max-width:400px;margin:0 auto}}
-@media(max-width:768px){.stats-row{grid-template-columns:repeat(3,1fr)}.dg{grid-template-columns:1fr 1fr}.eg,.rg{grid-template-columns:1fr}.exg{grid-template-columns:1fr}.fr{grid-template-columns:60px 1fr 80px 80px 60px;font-size:10px}.jgrid{grid-template-columns:repeat(2,1fr)}.jw-row{grid-template-columns:94px 1fr 94px 94px 66px}.claim-input-row{flex-direction:column}}
+@media(max-width:768px){.stats-row{grid-template-columns:repeat(3,1fr)}.dg{grid-template-columns:1fr 1fr}.eg,.rg{grid-template-columns:1fr}.exg{grid-template-columns:1fr}.fr{grid-template-columns:60px 1fr 80px 80px 60px;font-size:10px}.jgrid{grid-template-columns:repeat(2,1fr)}.jw-row{grid-template-columns:94px 1fr 94px 94px 66px}}
 @media(max-width:640px){.hero h1{font-size:36px}.stats-row{grid-template-columns:repeat(2,1fr)}.dg{grid-template-columns:1fr}.dir{flex-direction:column}.cd-wrap{padding:18px 20px;gap:8px}.cd-n{width:52px;height:52px;font-size:32px}.nav-links{display:none}.tb th:nth-child(n+5),.tb td:nth-child(n+5){display:none}.fr{grid-template-columns:55px 1fr 70px 60px}.fr>:nth-child(4){display:none}.jgrid{grid-template-columns:1fr}.jw-row{grid-template-columns:84px 1fr 86px}.jw-row>:nth-child(4),.jw-row>:nth-child(5){display:none}}
 </style>
 </head>
@@ -271,22 +235,6 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
 <canvas id="bgCanvas"></canvas>
 <div class="blob blob-1"></div><div class="blob blob-2"></div>
 
-<div class="modal-overlay" id="claimModal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeClaimModal()">x</button>
-    <div class="modal-title">Claim Your Reward</div>
-    <div class="modal-sub" id="modalDesc">To claim, send a small verification transaction to the prize wallet.</div>
-    <div class="modal-steps">
-      <div class="modal-step"><div class="modal-step-num">1</div><div class="modal-step-text">Send any amount of <strong>CRO or CTR</strong> to the prize wallet address below (this verifies ownership of your wallet).</div></div>
-      <div class="modal-step"><div class="modal-step-num">2</div><div class="modal-step-text">After your transaction confirms, the team will verify your eligibility and manually send your reward within <strong>48 hours</strong>.</div></div>
-      <div class="modal-step"><div class="modal-step-num">3</div><div class="modal-step-text">Keep this page open or note your wallet address. No registration needed.</div></div>
-    </div>
-    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px">Prize Wallet Address</div>
-    <div class="modal-addr-box" id="modalPrizeAddr">0x32bA7097fC2ce5b1A118Bf3347b492e414cB7C35</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Your reward: <strong id="modalRewardAmt" style="color:var(--gold)">--</strong></div>
-    <button class="modal-confirm-btn" onclick="closeClaimModal()">Got it -- I'll send the verification tx</button>
-  </div>
-</div>
 
 <nav><div class="inner">
   <div class="logo"><img src="ctr-logo.png" alt="CTR"><span class="logo-text">CTR</span><span class="logo-tag">Season 1</span></div>
@@ -296,7 +244,6 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
     <a href="#dashboard">Dashboard</a>
     <a href="#scoring">Scoring</a>
     <a href="#rewards">Rewards</a>
-    <a href="#claim">Claim</a>
   </div>
   <button class="cta-btn" onclick="alert('Wallet connect coming Phase 2!')">Connect Wallet</button>
 </div></nav>
@@ -326,6 +273,7 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
   </div>
 
   <section class="cd-sec">
+    <div class="cd-status" id="cdStatus" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);text-align:center;margin-bottom:12px;letter-spacing:.18em;text-transform:uppercase">Season starts in</div>
     <div class="cd-wrap">
       <div class="cd-unit"><div class="cd-n" id="cdD">00</div><div class="cd-l">Days</div></div><span class="cd-c">:</span>
       <div class="cd-unit"><div class="cd-n" id="cdH">00</div><div class="cd-l">Hours</div></div><span class="cd-c">:</span>
@@ -335,49 +283,33 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
     <div class="prog-row"><div class="prog-bg"><div class="prog-fill" id="seasonFill" style="width:0%"></div></div><div class="prog-labels"><span>Day <span id="dayNum">0</span>/30</span><span id="seasonPct">0%</span></div></div>
   </section>
 
-  <section class="section" id="claim">
-    <div class="sec-head"><div class="sec-icon" style="background:rgba(212,168,67,.06)">&#x1F4B0;</div><div class="sec-title">Claim Your Rewards</div></div>
-    <div class="sec-sub">Enter your wallet to see if you have unclaimed CTR rewards from jackpot wins or leaderboard placement.</div>
-    <div class="claim-section">
-      <div class="claim-header">
-        <div><div class="claim-title">Reward Claim Center</div><div class="claim-subtitle">Jackpot refunds + leaderboard rewards. Manual claim, no auto-airdrop.</div></div>
-        <div class="total-prize-pool"><div class="tpl">Prize Pool</div><div class="tpv" id="prizePoolAmt">Loading...</div></div>
-      </div>
-      <div class="prize-wallet-info"><span class="prize-wallet-label">Prize Wallet</span><span class="prize-wallet-addr">0x32bA7097fC2ce5b1A118Bf3347b492e414cB7C35</span></div>
-      <div class="claim-input-row">
-        <input class="dinp" id="claimWalletInput" type="text" placeholder="0x... enter your wallet address" spellcheck="false">
-        <button class="claim-btn" onclick="checkClaims()">Check Rewards</button>
-      </div>
-      <div class="claim-result" id="claimResult">
-        <div class="claim-reward-box">
-          <div class="claim-reward-hd"><div class="claim-reward-title" id="claimResultTitle">Your Rewards</div><div class="badge bl"><div class="d"></div>CLAIMABLE</div></div>
-          <div class="claim-items" id="claimItems"></div>
-        </div>
-      </div>
-      <div class="claim-info-note">Claiming is manual. After clicking "Claim", send a small verification transaction from your wallet to the prize wallet address above. The team will verify eligibility and send your CTR reward within 48 hours. Jackpot rewards = % of tax paid back. Leaderboard rewards = share of the seasonal prize pool.</div>
-    </div>
-  </section>
-
   <section class="section" id="jackpot">
     <div class="sec-head"><div class="sec-icon" style="background:rgba(212,168,67,.06)">&#x1F3B0;</div><div class="sec-title">Tax Return Jackpot</div></div>
-    <div class="sec-sub">Every buy >= $10 gets one random jackpot roll. CTR tax = 10%, winners receive 10%-100% of their paid tax back.</div>
-    <div class="jcard">
-      <div class="jtop">
-        <div><div class="card-t" style="font-size:38px">&#x1F3B2; Random Tax Return on Every Buy</div><div style="color:var(--text3);margin-top:6px">Bigger refunds are much rarer. Full 100% tax refund is ultra rare.</div></div>
-        <div style="text-align:right"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);letter-spacing:.14em;text-transform:uppercase">Recent Jackpots</div><div class="jtitle" id="jackpotCount">0</div></div>
+    <div class="sec-sub">Every buy &gt;= $10 gets one random jackpot roll. CTR tax = 10%, winners receive 10%-100% of their paid tax back.</div>
+    <div class="teaser-wrap">
+      <div class="teaser-overlay">
+        <div class="teaser-badge">
+          <div class="teaser-badge-eyebrow">Coming in Season 2</div>
+          <div class="teaser-badge-title">Tax Return Jackpot</div>
+          <div class="teaser-badge-sub">On-chain Merkle distributor. Automatic refunds for lucky buys.</div>
+        </div>
       </div>
-      <div class="jgrid">
-        <div class="jtile"><div class="jp" style="color:var(--green)">10%</div><div class="jc">Tax refund tier</div><div class="jr c">Common</div></div>
-        <div class="jtile"><div class="jp" style="color:var(--accent)">25%</div><div class="jc">Tax refund tier</div><div class="jr u">Uncommon</div></div>
-        <div class="jtile"><div class="jp" style="color:var(--gold)">50%</div><div class="jc">Tax refund tier</div><div class="jr r">Rare</div></div>
-        <div class="jtile"><div class="jp" style="color:#fb923c">75%</div><div class="jc">Tax refund tier</div><div class="jr e">Epic</div></div>
-        <div class="jtile"><div class="jp" style="color:#ff6b6b">100%</div><div class="jc">Tax refund tier</div><div class="jr l">Legendary</div></div>
+      <div class="teaser-content">
+        <div class="jcard">
+          <div class="jtop">
+            <div><div class="card-t" style="font-size:38px">&#x1F3B2; Random Tax Return on Every Buy</div><div style="color:var(--text3);margin-top:6px">Bigger refunds are much rarer. Full 100% tax refund is ultra rare.</div></div>
+            <div style="text-align:right"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);letter-spacing:.14em;text-transform:uppercase">Recent Jackpots</div><div class="jtitle">--</div></div>
+          </div>
+          <div class="jgrid">
+            <div class="jtile"><div class="jp" style="color:var(--green)">10%</div><div class="jc">Tax refund tier</div><div class="jr c">Common</div></div>
+            <div class="jtile"><div class="jp" style="color:var(--accent)">25%</div><div class="jc">Tax refund tier</div><div class="jr u">Uncommon</div></div>
+            <div class="jtile"><div class="jp" style="color:var(--gold)">50%</div><div class="jc">Tax refund tier</div><div class="jr r">Rare</div></div>
+            <div class="jtile"><div class="jp" style="color:#fb923c">75%</div><div class="jc">Tax refund tier</div><div class="jr e">Epic</div></div>
+            <div class="jtile"><div class="jp" style="color:#ff6b6b">100%</div><div class="jc">Tax refund tier</div><div class="jr l">Legendary</div></div>
+          </div>
+          <div class="jhow"><strong>How it works:</strong> only <strong>BUY</strong> trades with value <strong>&gt;= $10</strong> can trigger. Your transaction hash determines a deterministic jackpot roll (same tx = same result). Winners get <strong>10%-100%</strong> of their paid taxes back.</div>
+        </div>
       </div>
-      <div class="jhow"><strong>How it works:</strong> only <strong>BUY</strong> trades with value <strong>>= $10</strong> can trigger. Your transaction hash determines a deterministic jackpot roll (same tx = same result). Winners get <strong>10%-100%</strong> of their paid taxes back.</div>
-    </div>
-    <div class="card jfeed">
-      <div class="card-hd"><div class="card-t">Recent Jackpot Wins</div><div class="badge bl"><div class="d"></div>LIVE</div></div>
-      <div id="jackpotBody"><div class="jw-row h"><span>Refund</span><span>Wallet</span><span>Buy</span><span>Tax Back</span><span>Time</span></div><div class="tbe">Waiting for trade data...</div></div>
     </div>
   </section>
 
@@ -469,7 +401,7 @@ const LP='0xf118aa245b0627b4752607620d0048b492a5f4fb';
 const PRIZE_WALLET='0x32bA7097fC2ce5b1A118Bf3347b492e414cB7C35';
 const EXP='https://explorer.cronos.org';
 const SD=30;
-const SS=new Date('2026-03-20T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
+const SS=new Date('2026-05-15T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
 const SS_TS=SS.getTime()/1e3;
 const SNAPSHOT_URL='data/season.json';
 
@@ -513,7 +445,7 @@ async function loadSnapshot(){
     $('sLiquidity').textContent=fU(m.liquidity);$('sLiquidity').classList.remove('ld');
     updTicker(m.price,m.change24h,m.volume24h,m.liquidity,m.buys24h,m.sells24h);
 
-    renderFeed();renderJackpots();renderLB();updCounts(s.stats);updPrizePool(s.stats);
+    renderFeed();renderJackpots();renderLB();updCounts(s.stats);
 
     const ageMin=Math.max(0,Math.floor((Date.now()/1000-s.updatedAt)/60));
     setSt(ageMin<2?'LIVE · just updated':'LIVE · '+ageMin+'m ago',1);
@@ -546,22 +478,8 @@ function renderFeed(){
 }
 
 function renderJackpots(){
-  const jb=$('jackpotBody');
-  $('jackpotCount').textContent=fN(jackpots.length);
-  if(!jackpots.length){
-    jb.innerHTML='<div class="jw-row h"><span>Refund</span><span>Wallet</span><span>Buy</span><span>Tax Back</span><span>Time</span></div><div class="tbe">No jackpot wins yet.</div>';
-    return;
-  }
-  jb.innerHTML='<div class="jw-row h"><span>Refund</span><span>Wallet</span><span>Buy</span><span>Tax Back</span><span>Time</span></div>';
-  jackpots.slice(0,30).forEach(win=>{
-    const row=document.createElement('div');row.className='jw-row';
-    row.innerHTML='<span class="jtag '+win.className+'">'+Math.round(win.tierPct*100)+'%</span>'
-      +'<span class="jmono"><a href="'+EXP+'/address/'+win.trader+'" target="_blank" style="color:inherit;text-decoration:none">'+win.trader+'</a></span>'
-      +'<span class="jmono">'+fU(win.usd)+'</span>'
-      +'<span class="jmono" style="color:var(--gold)">'+fU(win.refund)+'</span>'
-      +'<span class="jmono">'+tA(win.ts)+'</span>';
-    jb.appendChild(row);
-  });
+  // Jackpot section is teaser-only in Season 1 (Phase 2 feature).
+  // No-op: leave the blurred placeholder content as-is.
 }
 
 function renderLB(){
@@ -591,48 +509,6 @@ function updCounts(stats){
   $('sTrades').textContent=fN(tot);$('sTrades').classList.remove('ld');
 }
 
-function updPrizePool(stats){
-  const total=stats?stats.prizePool:jackpots.reduce((s,j)=>s+j.refund,0);
-  $('prizePoolAmt').textContent=fU(total)+' CTR';
-}
-
-function checkClaims(){
-  const addr=$('claimWalletInput').value.trim().toLowerCase();
-  if(!addr||!addr.startsWith('0x')||addr.length!==42){alert('Please enter a valid 42-character wallet address.');return}
-  const claimItems=[];
-  const walletJackpots=jackpots.filter(j=>(j.trader||'').toLowerCase()===addr);
-  walletJackpots.forEach(j=>{
-    claimItems.push({type:'jackpot',label:'Jackpot Win ('+Math.round(j.tierPct*100)+'% refund)',amount:j.refund,subtext:'Buy: '+fU(j.usd)+' · Tax back: '+fU(j.refund)});
-  });
-  const lbIdx=lb.findIndex(t=>t.addr===addr);
-  if(lbIdx>=0){
-    const rank=lbIdx+1;let rewardPct=0,rewardLabel='';
-    if(rank<=10){rewardPct=0.50/10;rewardLabel='Top 10 (rank #'+rank+')';}
-    else if(rank<=50){rewardPct=0.30/40;rewardLabel='Mid-tier (rank #'+rank+')';}
-    if(rewardPct>0){
-      const totalPool=jackpots.reduce((s,j)=>s+j.refund,0)*2;
-      claimItems.push({type:'leaderboard',label:'Leaderboard Reward - '+rewardLabel,amount:totalPool*rewardPct,subtext:'Score: '+fN(Math.round(lb[lbIdx].fs))+' · Season ends at close'});
-    }
-  }
-  const resultEl=$('claimResult');const itemsEl=$('claimItems');
-  resultEl.style.display='block';
-  if(!claimItems.length){
-    itemsEl.innerHTML='<div class="claim-no-rewards">No claimable rewards found for this wallet this season. Keep trading to qualify!</div>';
-    $('claimResultTitle').textContent='No Rewards Yet';return;
-  }
-  $('claimResultTitle').textContent=claimItems.length+' Reward'+(claimItems.length>1?'s':'')+' Found';
-  itemsEl.innerHTML='';
-  claimItems.forEach(item=>{
-    const div=document.createElement('div');div.className='claim-item';
-    div.innerHTML='<div class="claim-item-left"><div class="claim-item-type">'+(item.type==='jackpot'?'Jackpot':'Leaderboard')+'</div><div class="claim-item-amount">'+fU(item.amount)+' CTR</div><div class="claim-item-sub">'+item.subtext+'</div></div><button class="claim-item-btn" onclick="openClaimModal(\''+fU(item.amount)+' CTR\',\''+item.label+'\')">Claim</button>';
-    itemsEl.appendChild(div);
-  });
-}
-
-function openClaimModal(amt,label){$('modalPrizeAddr').textContent=PRIZE_WALLET;$('modalRewardAmt').textContent=amt;$('modalDesc').textContent='You have a reward of '+amt+' for: '+label;$('claimModal').classList.add('active')}
-function closeClaimModal(){$('claimModal').classList.remove('active')}
-$('claimModal').addEventListener('click',function(e){if(e.target===this)closeClaimModal()});
-$('claimWalletInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkClaims()});
 
 async function lookupWallet(){
   const inp=$('walletInput').value.trim().toLowerCase();
@@ -656,13 +532,34 @@ async function lookupWallet(){
 $('walletInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupWallet()});
 
 function updCD(){
-  const now=new Date();const diff=Math.max(0,SE-now);
+  const now=new Date();
+  let diff,labelTarget;
+  if(now<SS){
+    // Pre-season: countdown to start
+    diff=SS-now;labelTarget='start';
+  }else if(now<SE){
+    // Live season: countdown to end
+    diff=SE-now;labelTarget='end';
+  }else{
+    // Season ended: freeze at zero
+    diff=0;labelTarget='ended';
+  }
   $('cdD').textContent=String(Math.floor(diff/864e5)).padStart(2,'0');
   $('cdH').textContent=String(Math.floor(diff%864e5/36e5)).padStart(2,'0');
   $('cdM').textContent=String(Math.floor(diff%36e5/6e4)).padStart(2,'0');
   $('cdS').textContent=String(Math.floor(diff%6e4/1e3)).padStart(2,'0');
-  const el=Math.max(0,now-SS);const pct=Math.min(100,el/(SE-SS)*100);
-  $('seasonFill').style.width=pct+'%';$('dayNum').textContent=Math.min(SD,Math.ceil(el/864e5));$('seasonPct').textContent=pct.toFixed(0)+'%';
+  // Progress bar reflects elapsed time within the season window
+  const el=Math.max(0,Math.min(SE-SS,now-SS));
+  const pct=Math.min(100,el/(SE-SS)*100);
+  $('seasonFill').style.width=pct+'%';
+  $('dayNum').textContent=labelTarget==='start'?'0':Math.min(SD,Math.ceil(el/864e5));
+  $('seasonPct').textContent=pct.toFixed(0)+'%';
+  // Update countdown status label
+  const cdLbl=$('cdStatus');
+  if(cdLbl){
+    cdLbl.textContent=labelTarget==='start'?'Season starts in':labelTarget==='end'?'Season ends in':'Season ended';
+    cdLbl.style.color=labelTarget==='ended'?'var(--red)':labelTarget==='end'?'var(--green)':'var(--accent)';
+  }
 }
 
 function updTicker(p,ch,vol,liq,buys,sells){
