@@ -15,11 +15,9 @@ const fs = require('fs');
 const path = require('path');
 
 // ====================== CONFIG ======================
-const API_KEY = process.env.CRONOS_API_KEY;
-if (!API_KEY) {
-  console.error('FATAL: CRONOS_API_KEY env var is missing');
-  process.exit(1);
-}
+// API_KEY is no longer required (we read directly from chain via RPC)
+// but kept as optional in case we add explorer fallback later
+const API_KEY = process.env.CRONOS_API_KEY || '';
 
 const CTR          = '0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC';
 const LP           = '0xf118aa245b0627b4752607620d0048b492a5f4fb';
@@ -106,86 +104,103 @@ async function fetchJson(url, opts = {}, timeoutMs = 30000) {
 // ====================== FETCHERS ======================
 
 /**
- * Fetch ALL CTR token transfers involving the LP pair, paginated.
- * Tries multiple API sources in order: BlockScout (proven), Cronos Explorer v1/v2.
- * Stops early when we go past the season start (results are sorted desc).
+ * Fetch ALL CTR Transfer events involving the LP across the entire season window.
+ * Pure RPC: chunks the range into 2000-block segments (Cronos RPC limit) and queries
+ * eth_getLogs for each. Two queries per chunk: LP-as-sender (=Buy) and LP-as-receiver (=Sell).
+ * Direct from chain — no indexer lag, no third-party dependency.
  */
 async function fetchAllTransfers() {
-  // Multiple API sources — first one that returns valid data wins
-  const sources = [
-    {
-      name: 'BlockScout',
-      url: page => `https://cronos.org/explorer/api`
-        + `?module=account&action=tokentx`
-        + `&contractaddress=${CTR}`
-        + `&address=${LP}`
-        + `&page=${page}&offset=10000&sort=desc`
-    },
-    {
-      name: 'Cronos Explorer v1',
-      url: page => `https://explorer-api.cronos.org/mainnet/api/v1/account/tokentx`
-        + `?contractaddress=${CTR}`
-        + `&address=${LP}`
-        + `&page=${page}&offset=10000&sort=desc`
-        + `&apikey=${API_KEY}`
-    },
-    {
-      name: 'Cronos Explorer v2',
-      url: page => `https://explorer-api.cronos.org/mainnet/api/v2/account/tokentx`
-        + `?contractaddress=${CTR}`
-        + `&address=${LP}`
-        + `&page=${page}&offset=10000&sort=desc`
-        + `&apikey=${API_KEY}`
-    }
-  ];
+  const TRANSFER_SIG = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  const lpPad = '0x' + '0'.repeat(24) + LP.slice(2).toLowerCase();
+  const CHUNK = 2000; // Cronos public RPC limit
 
-  let lastErr;
-  for (const src of sources) {
-    console.log(`  Trying ${src.name}...`);
-    try {
-      const all = [];
-      for (let page = 1; page <= 5; page++) {
-        let d;
-        try {
-          d = await fetchJson(src.url(page));
-        } catch (e) {
-          if (page === 1) throw e;
-          console.warn(`    Page ${page} failed: ${e.message}`);
-          break;
-        }
+  // Estimate season-start block from current block (Cronos: ~5s blocks)
+  const latestHex = await rpcCall('eth_blockNumber', []);
+  const latest = parseInt(latestHex, 16);
+  const secondsSinceStart = Math.floor(Date.now() / 1000) - SS_TS;
+  const estimatedBlocksBack = Math.ceil(secondsSinceStart / 5);
+  // 10% safety margin so we don't miss anything near the season-start boundary
+  const fromBlock = Math.max(0, latest - Math.ceil(estimatedBlocksBack * 1.1));
+  const toBlock = latest;
+  const totalBlocks = toBlock - fromBlock;
 
-        // Etherscan-compatible: status='1' means success, status='0' means empty result
-        const ok = (d.status === '1' && Array.isArray(d.result))
-                || (Array.isArray(d.result) && d.result.length > 0);
-        if (!ok) {
-          if (page === 1) throw new Error(`No data (status=${d.status}, msg=${d.message || 'unknown'})`);
-          break;
-        }
+  // Build chunk list
+  const chunks = [];
+  for (let start = fromBlock; start <= toBlock; start += CHUNK) {
+    const end = Math.min(start + CHUNK - 1, toBlock);
+    chunks.push({ start, end });
+  }
+  console.log(`  Block range: ${fromBlock} → ${toBlock} (${totalBlocks} blocks, ${chunks.length} chunks of ${CHUNK})`);
+  console.log(`  Querying eth_getLogs in parallel batches...`);
 
-        let stopHere = false;
-        for (const tx of d.result) {
-          const ts = parseInt(tx.timeStamp || '0');
-          if (ts < SS_TS) { stopHere = true; break; }
-          all.push(tx);
-        }
-        console.log(`    Page ${page}: ${d.result.length} transfers (${all.length} total in season window)`);
+  const allLogs = [];
+  let chunkDone = 0;
+  let chunkFailed = 0;
 
-        if (stopHere) break;
-        if (d.result.length < 10000) break;
-        await sleep(300);
+  // Process 4 chunks in parallel (one per RPC, roughly)
+  const PARALLEL = 4;
+  for (let i = 0; i < chunks.length; i += PARALLEL) {
+    const batch = chunks.slice(i, i + PARALLEL);
+    const results = await Promise.all(batch.map(async ({ start, end }) => {
+      const fromBlockHex = '0x' + start.toString(16);
+      const toBlockHex   = '0x' + end.toString(16);
+      try {
+        const [fromLogs, toLogs] = await Promise.all([
+          rpcCall('eth_getLogs', [{ address: CTR, fromBlock: fromBlockHex, toBlock: toBlockHex, topics: [TRANSFER_SIG, lpPad, null] }]),
+          rpcCall('eth_getLogs', [{ address: CTR, fromBlock: fromBlockHex, toBlock: toBlockHex, topics: [TRANSFER_SIG, null, lpPad] }])
+        ]);
+        return [...(fromLogs || []), ...(toLogs || [])];
+      } catch (e) {
+        chunkFailed++;
+        return [];
       }
+    }));
+    results.forEach(logs => allLogs.push(...logs));
+    chunkDone += batch.length;
 
-      if (all.length > 0) {
-        console.log(`  ✓ ${src.name} succeeded with ${all.length} transfers`);
-        return all;
-      }
-    } catch (e) {
-      console.warn(`  ${src.name} failed: ${e.message}`);
-      lastErr = e;
+    if (chunkDone % 40 === 0 || chunkDone === chunks.length) {
+      const pct = Math.floor((chunkDone / chunks.length) * 100);
+      console.log(`    Progress: ${chunkDone}/${chunks.length} chunks (${pct}%) — ${allLogs.length} logs collected`);
     }
+    if (i + PARALLEL < chunks.length) await sleep(50);
   }
 
-  throw new Error(`All transfer sources failed. Last error: ${lastErr?.message}`);
+  if (chunkFailed > 0) console.warn(`  WARN: ${chunkFailed} chunks failed`);
+  console.log(`  Collected ${allLogs.length} raw Transfer events from chain`);
+  if (!allLogs.length) return [];
+
+  // Get unique block timestamps (needed because eth_getLogs doesn't include timestamp)
+  const uniqueBlocks = [...new Set(allLogs.map(l => l.blockNumber))];
+  console.log(`  Fetching timestamps for ${uniqueBlocks.length} unique blocks...`);
+  const blockTimes = {};
+  for (let i = 0; i < uniqueBlocks.length; i += 12) {
+    const batch = uniqueBlocks.slice(i, i + 12);
+    const blocks = await Promise.all(batch.map(bn =>
+      rpcCall('eth_getBlockByNumber', [bn, false]).catch(() => null)
+    ));
+    batch.forEach((bn, j) => {
+      if (blocks[j]?.timestamp) blockTimes[bn] = parseInt(blocks[j].timestamp, 16);
+    });
+    if (i + 12 < uniqueBlocks.length) await sleep(60);
+  }
+
+  // Convert logs to standard transfer format and filter to season window
+  const transfers = allLogs.map(log => {
+    const ts = blockTimes[log.blockNumber] || 0;
+    return {
+      hash: log.transactionHash,
+      from: '0x' + log.topics[1].slice(26),
+      to: '0x' + log.topics[2].slice(26),
+      value: BigInt(log.data || '0x0').toString(),
+      timeStamp: ts.toString(),
+      tokenDecimal: String(DEC)
+    };
+  }).filter(t => parseInt(t.timeStamp) >= SS_TS);
+
+  // Sort newest first
+  transfers.sort((a, b) => parseInt(b.timeStamp) - parseInt(a.timeStamp));
+  console.log(`  Filtered to ${transfers.length} transfers in season window`);
+  return transfers;
 }
 
 async function fetchPrice() {
@@ -272,68 +287,6 @@ async function resolveRealTraders(transfers) {
   }
   console.log(`  Resolved ${resolved} txs (${failed} failed)`);
   return map;
-}
-
-/**
- * Fetch CTR Transfer events involving the LP for the last N hours, directly via RPC.
- * Bypasses BlockScout indexing lag — gives real-time data straight from the chain.
- * Used to supplement bulk historical data (which BlockScout handles fine).
- */
-async function fetchRecentTransfersRPC(hoursBack) {
-  const TRANSFER_SIG = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-  const lpPadded = '0x' + '0'.repeat(24) + LP.slice(2).toLowerCase();
-
-  // Latest block
-  const latestHex = await rpcCall('eth_blockNumber', []);
-  const latest = parseInt(latestHex, 16);
-  // Cronos: ~5s block time
-  const blocksBack = Math.ceil(hoursBack * 3600 / 5);
-  const fromBlockNum = Math.max(0, latest - blocksBack);
-  const fromBlock = '0x' + fromBlockNum.toString(16);
-
-  console.log(`  Querying eth_getLogs for last ${hoursBack}h (~${blocksBack} blocks, ${fromBlockNum} → ${latest})...`);
-
-  // Two queries: LP as sender, LP as receiver
-  let fromLPlogs = [], toLPlogs = [];
-  try {
-    [fromLPlogs, toLPlogs] = await Promise.all([
-      rpcCall('eth_getLogs', [{ address: CTR, fromBlock, toBlock: 'latest', topics: [TRANSFER_SIG, lpPadded, null] }]),
-      rpcCall('eth_getLogs', [{ address: CTR, fromBlock, toBlock: 'latest', topics: [TRANSFER_SIG, null, lpPadded] }])
-    ]);
-  } catch (e) {
-    console.warn(`  eth_getLogs failed: ${e.message}`);
-    return [];
-  }
-
-  const allLogs = [...(fromLPlogs || []), ...(toLPlogs || [])];
-  console.log(`  Got ${allLogs.length} raw Transfer events from RPC (${fromLPlogs?.length || 0} from LP, ${toLPlogs?.length || 0} to LP)`);
-  if (!allLogs.length) return [];
-
-  // Fetch block timestamps (batched)
-  const uniqueBlocks = [...new Set(allLogs.map(l => l.blockNumber))];
-  const blockTimes = {};
-  for (let i = 0; i < uniqueBlocks.length; i += 10) {
-    const batch = uniqueBlocks.slice(i, i + 10);
-    const blocks = await Promise.all(batch.map(bn =>
-      rpcCall('eth_getBlockByNumber', [bn, false]).catch(() => null)
-    ));
-    batch.forEach((bn, j) => {
-      if (blocks[j]?.timestamp) blockTimes[bn] = parseInt(blocks[j].timestamp, 16);
-    });
-    if (i + 10 < uniqueBlocks.length) await sleep(80);
-  }
-
-  // Convert to standard transfer format
-  return allLogs.map(log => ({
-    hash: log.transactionHash,
-    from: '0x' + log.topics[1].slice(26),
-    to: '0x' + log.topics[2].slice(26),
-    value: BigInt(log.data || '0x0').toString(),
-    timeStamp: (blockTimes[log.blockNumber] || 0).toString(),
-    tokenDecimal: String(DEC),
-    blockNumber: parseInt(log.blockNumber, 16).toString(),
-    _source: 'rpc'
-  })).filter(t => parseInt(t.timeStamp) >= SS_TS);
 }
 
 // ====================== BUILDERS ======================
@@ -472,49 +425,19 @@ async function main() {
   const market = await fetchPrice();
   console.log(`  Price: $${market.price.toFixed(6)} | 24h: ${market.change24h.toFixed(2)}% | Vol: $${market.volume24h.toFixed(0)} | Liq: $${market.liquidity.toFixed(0)}`);
 
-  console.log('\n[2/6] Fetching transfers from explorer...');
-  const bulkTransfers = await fetchAllTransfers();
-  console.log(`  BlockScout: ${bulkTransfers.length} transfers in season window`);
-
-  // Supplement with last 24h of fresh data via RPC (BlockScout has indexing lag)
-  console.log('  Supplementing with eth_getLogs for fresh data (BlockScout has indexing lag)...');
-  let freshTransfers = [];
-  try {
-    freshTransfers = await fetchRecentTransfersRPC(24);
-    console.log(`  RPC fresh: ${freshTransfers.length} transfers in last 24h`);
-  } catch (e) {
-    console.warn(`  RPC supplement failed (continuing with BlockScout only): ${e.message}`);
-  }
-
-  // Merge + dedup by hash:from:to
-  const seenKeys = new Set();
-  const transfers = [];
-  for (const t of [...freshTransfers, ...bulkTransfers]) {
-    const h = (t.hash || '').toLowerCase();
-    const f = (t.from || '').toLowerCase();
-    const to = (t.to || '').toLowerCase();
-    const key = `${h}:${f}:${to}`;
-    if (seenKeys.has(key)) continue;
-    seenKeys.add(key);
-    transfers.push(t);
-  }
-  const dupes = freshTransfers.length + bulkTransfers.length - transfers.length;
-  console.log(`  Merged: ${transfers.length} unique transfers (${dupes} duplicates removed)`);
-
-  // Diagnostic: show newest 3 transfers
-  if (transfers.length > 0) {
-    transfers.sort((a, b) => parseInt(b.timeStamp) - parseInt(a.timeStamp));
-    console.log(`  Newest transfers in dataset:`);
-    transfers.slice(0, 3).forEach(t => {
-      const ago = Math.floor((Date.now()/1000 - parseInt(t.timeStamp)) / 60);
-      const src = t._source === 'rpc' ? 'RPC' : 'BS';
-      console.log(`    [${src}] ${ago}m ago | hash=${t.hash?.slice(0,16)}... | ${t.from?.slice(0,8)} → ${t.to?.slice(0,8)}`);
-    });
-  }
+  console.log('\n[2/6] Fetching transfers directly from Cronos chain via RPC...');
+  const transfers = await fetchAllTransfers();
 
   if (transfers.length === 0) {
     throw new Error('Zero transfers returned — preserving previous snapshot.');
   }
+
+  // Diagnostic: show newest 3 transfers
+  console.log(`  Newest transfers in dataset:`);
+  transfers.slice(0, 3).forEach(t => {
+    const ago = Math.floor((Date.now()/1000 - parseInt(t.timeStamp)) / 60);
+    console.log(`    ${ago}m ago | hash=${t.hash?.slice(0,16)}... | ${t.from?.slice(0,8)} → ${t.to?.slice(0,8)}`);
+  });
 
   console.log('\n[3/6] Resolving real trader EOAs (tx.from for each tx)...');
   const txFromMap = await resolveRealTraders(transfers);
