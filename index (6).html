@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTR Trading Season | Cronos Treasury Reserve</title>
+<link rel="icon" type="image/png" href="ctr-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0f1a;--bg2:#111827;--bg3:#1a2340;--bg4:#243152;
+  --gold:#d4a843;--gold2:#c49b38;--gold-glow:rgba(212,168,67,.15);
+  --accent:#64ffda;--navy:#1e2d4a;--navy2:#2a3f66;
+  --green:#4ade80;--red:#ef4444;
+  --text:#e8e6f0;--text2:#94a3b8;--text3:#64748b;--text4:#3d4f6f;
+  --border:#1e2d4a;--border2:#2a3f66;
+  --glass:rgba(17,24,39,.75);
+}
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#1e2d4a #0b0f1a}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
+a{color:var(--accent);text-decoration:none}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+#bgCanvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+.blob{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0;opacity:.6}
+.blob-1{width:500px;height:500px;top:-150px;left:-100px;background:rgba(100,255,218,.05);animation:bf 16s ease-in-out infinite}
+.blob-2{width:500px;height:500px;bottom:-200px;right:-150px;background:rgba(212,168,67,.05);animation:bf 20s ease-in-out infinite reverse}
+@keyframes bf{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,-60px) scale(1.15)}66%{transform:translate(-30px,40px) scale(.9)}}
+.container{max-width:1140px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+nav{padding:12px 0;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(11,15,26,.88);backdrop-filter:blur(24px);z-index:100}
+nav .inner{display:flex;align-items:center;justify-content:space-between;max-width:1140px;margin:0 auto;padding:0 24px;gap:12px}
+.logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.logo img{width:36px;height:36px;border-radius:50%}
+.logo-text{font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;color:var(--gold);letter-spacing:-.02em}
+.logo-tag{font-family:'DM Mono',monospace;font-size:8px;color:var(--bg);background:var(--gold);border-radius:4px;padding:2px 8px;font-weight:600;letter-spacing:.06em}
+.nav-links{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.nav-links a{font-size:13px;color:var(--text3);transition:color .2s;font-weight:500}
+.nav-links a:hover{color:var(--accent)}
+.cta-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);border:none;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;padding:9px 22px;border-radius:8px;cursor:pointer;transition:all .3s;letter-spacing:.01em;flex-shrink:0}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(212,168,67,.35)}
+
+.ticker{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 0;overflow:hidden}
+.ticker-track{display:flex;gap:36px;animation:tscroll 35s linear infinite;white-space:nowrap}
+.ticker-track:hover{animation-play-state:paused}
+.ti{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:11px}
+.ti .tl{color:var(--text4);font-size:9px;text-transform:uppercase;letter-spacing:.1em}.ti .tv{font-weight:600}
+.tsep{width:3px;height:3px;background:var(--border2);border-radius:50%;flex-shrink:0}
+@keyframes tscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+.hero{padding:72px 0 48px;display:grid;grid-template-columns:1fr 420px;gap:48px;align-items:center}
+.hero-left{position:relative}
+.hero-chip{display:inline-flex;align-items:center;gap:10px;background:var(--gold-glow);border:1px solid rgba(212,168,67,.25);border-radius:99px;padding:6px 20px;margin-bottom:24px;animation:fu .5s ease-out}
+.hero-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);position:relative}
+.hero-chip .dot::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--green);opacity:.3;animation:ring 2s ease-out infinite}
+@keyframes ring{to{transform:scale(2.5);opacity:0}}
+.hero-chip span{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.hero h1{font-family:'Manrope',sans-serif;font-weight:800;font-size:clamp(40px,5.5vw,64px);line-height:1.15;letter-spacing:-.04em;margin-bottom:18px;animation:fu .5s ease-out .1s both}
+.hero h1 .g{display:block;background:linear-gradient(135deg,var(--accent),#4fd1c5,var(--gold));background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:sh 5s ease-in-out infinite}
+@keyframes sh{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.hero p{font-size:16px;color:var(--text2);max-width:440px;margin-bottom:32px;animation:fu .5s ease-out .2s both}
+.hero-btns{display:flex;gap:14px;animation:fu .5s ease-out .3s both}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);border:none;font-weight:700;font-size:14px;padding:14px 36px;border-radius:10px;cursor:pointer;transition:all .3s;font-family:'Inter',sans-serif}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(212,168,67,.35)}
+.btn-o{background:transparent;border:1.5px solid var(--border2);color:var(--text);font-weight:600;font-size:14px;padding:13px 32px;border-radius:10px;cursor:pointer;transition:all .3s;font-family:'Inter',sans-serif}
+.btn-o:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px)}
+.hero-img{position:relative;animation:fu .6s ease-out .2s both}
+.hero-img img{width:100%;border-radius:20px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.hero-img::before{content:'';position:absolute;inset:-2px;border-radius:22px;background:linear-gradient(135deg,var(--accent),var(--gold));opacity:.15;z-index:-1;filter:blur(1px)}
+@keyframes fu{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;border-radius:16px;overflow:hidden;border:1px solid var(--border);margin-top:48px;animation:fu .5s ease-out .4s both}
+.st{background:var(--bg2);padding:24px 14px;text-align:center;transition:background .3s}
+.st:hover{background:var(--bg3)}
+.st .sl{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em;margin-bottom:6px}
+.st .sv{font-family:'Manrope',sans-serif;font-weight:800;font-size:22px;line-height:1.3}
+.st .ss{font-family:'DM Mono',monospace;font-size:10px;margin-top:4px;line-height:1.4}
+.st .sv.ld{opacity:.2;animation:lp 1.5s ease-in-out infinite}
+@keyframes lp{0%,100%{opacity:.2}50%{opacity:.5}}
+
+.cd-sec{margin:44px 0;text-align:center}
+.cd-wrap{display:inline-flex;gap:12px;align-items:center;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px 44px}
+.cd-n{font-family:'Manrope',sans-serif;font-weight:800;font-size:42px;line-height:1.2;width:68px;height:68px;display:flex;align-items:center;justify-content:center;background:var(--bg);border:1px solid var(--border2);border-radius:12px;color:var(--accent)}
+.cd-l{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);margin-top:6px;text-transform:uppercase;letter-spacing:.12em;text-align:center}
+.cd-c{font-family:'Manrope',sans-serif;font-size:32px;color:var(--text4);animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.prog-row{max-width:560px;margin:18px auto 0}
+.prog-bg{width:100%;height:8px;background:var(--bg3);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+.prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--gold));transition:width .8s}
+.prog-labels{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);margin-top:6px}
+
+.section{padding:60px 0}
+.sec-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.sec-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid var(--border)}
+.sec-title{font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;letter-spacing:-.02em}
+.sec-sub{color:var(--text3);font-size:13px;margin-bottom:28px;margin-left:52px}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color .3s}
+.card:hover{border-color:var(--border2)}
+.card-hd{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.card-t{font-family:'Manrope',sans-serif;font-weight:700;font-size:15px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:9px;border-radius:99px;padding:4px 12px;font-weight:600}
+.bl{color:var(--green);background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15)}
+.bl .d{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:blink 1.5s infinite}
+.berr{color:var(--red);background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)}
+
+.tb{width:100%;border-collapse:collapse}
+.tb th{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em;padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);font-weight:500}
+.tb td{padding:12px 14px;border-bottom:1px solid rgba(30,45,74,.4);font-size:12px;vertical-align:middle}
+.tb tbody tr{transition:all .3s}.tb tbody tr:hover{background:rgba(100,255,218,.015)}
+.rk{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:800;font-size:12px}
+.rk1{background:linear-gradient(135deg,var(--gold),#c49b38);color:var(--bg);box-shadow:0 0 16px rgba(212,168,67,.35)}
+.rk2{background:linear-gradient(135deg,#c0c0c0,#888);color:var(--bg)}
+.rk3{background:linear-gradient(135deg,#cd7f32,#8b5a2b);color:#fff}
+.rkn{background:var(--bg3);color:var(--text4)}
+.wc{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--accent);word-break:break-all;max-width:340px;opacity:.85}
+.wc a{color:inherit;text-decoration:none}.wc a:hover{opacity:1;color:var(--text)}
+.sc{font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:var(--gold);line-height:1.3}
+.vb{color:var(--green);font-family:'DM Mono',monospace;font-size:11px}
+.vs{color:var(--red);font-family:'DM Mono',monospace;font-size:11px}
+.awb{width:56px;height:5px;background:var(--bg);border-radius:99px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+.awf{height:100%;border-radius:99px}
+.hbc{font-family:'DM Mono',monospace;font-size:10px;background:rgba(100,255,218,.08);color:var(--accent);padding:3px 10px;border-radius:6px;border:1px solid rgba(100,255,218,.15);font-weight:600}
+.tbe{padding:56px 20px;text-align:center;color:var(--text4);font-size:13px}
+.tbl{padding:44px;text-align:center}
+.spin{width:24px;height:24px;border:2px solid var(--border);border-top:2px solid var(--accent);border-radius:50%;animation:sp 1s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.fscroll{max-height:440px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.fr{display:grid;grid-template-columns:70px 1fr 110px 110px 78px;gap:8px;padding:11px 20px;border-bottom:1px solid rgba(30,45,74,.25);align-items:center;transition:all .3s}
+.fr:hover{background:rgba(100,255,218,.01)}
+.fr.fh{position:sticky;top:0;background:var(--bg2);z-index:2;border-bottom:1px solid var(--border)}
+.fr.fh span{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em}
+.ft{font-family:'DM Mono',monospace;font-weight:700;font-size:11px;padding:4px 12px;border-radius:6px;text-align:center}
+.ft.buy{background:rgba(74,222,128,.08);color:var(--green);border:1px solid rgba(74,222,128,.12)}
+.ft.sell{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.12)}
+.fw{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis}
+.fw a{color:inherit;text-decoration:none}.fw a:hover{color:var(--accent)}
+.fa{font-family:'DM Mono',monospace;font-size:11px;font-weight:600}
+.ftm{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4)}
+@keyframes fsl{from{opacity:0;transform:translateX(-10px);background:rgba(100,255,218,.03)}to{opacity:1;transform:translateX(0);background:transparent}}
+.fnew{animation:fsl .5s ease-out}
+
+.jcard{background:linear-gradient(135deg,rgba(36,49,82,.9),rgba(17,24,39,.95));border:1px solid var(--border2);border-radius:22px;padding:24px;position:relative;overflow:hidden}
+.jcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--accent),var(--gold))}
+.jtop{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.jtitle{font-family:'Manrope',sans-serif;font-weight:800;font-size:42px;line-height:1.2;color:var(--gold)}
+.jgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.jtile{background:rgba(11,15,26,.8);border:1px solid var(--border2);border-radius:14px;padding:14px;text-align:center}
+.jtile .jp{font-family:'Manrope',sans-serif;font-weight:800;font-size:36px;line-height:1.2}
+.jtile .jc{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);margin-top:6px}
+.jtile .jr{display:inline-flex;margin-top:8px;padding:3px 9px;border-radius:999px;font-family:'DM Mono',monospace;font-size:9px;font-weight:600}
+.jr.c{background:rgba(74,222,128,.12);color:var(--green)}.jr.u{background:rgba(100,255,218,.12);color:var(--accent)}.jr.r{background:rgba(212,168,67,.14);color:var(--gold)}.jr.e{background:rgba(249,115,22,.14);color:#fb923c}.jr.l{background:rgba(239,68,68,.16);color:#ff6b6b}
+.jhow{margin-top:14px;background:rgba(11,15,26,.65);border:1px solid var(--border);border-radius:14px;padding:14px;color:var(--text2);font-size:13px}
+.jfeed{margin-top:16px}
+.jw-row{display:grid;grid-template-columns:110px 1fr 120px 110px 82px;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(30,45,74,.35);align-items:center}
+.jw-row.h{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em}
+.jtag{display:inline-flex;justify-content:center;align-items:center;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;border-radius:8px}
+.jtag.p10{background:rgba(74,222,128,.12);color:var(--green)}.jtag.p25{background:rgba(100,255,218,.12);color:var(--accent)}.jtag.p50{background:rgba(212,168,67,.12);color:var(--gold)}.jtag.p75{background:rgba(249,115,22,.14);color:#fb923c}.jtag.p100{background:rgba(239,68,68,.16);color:#ff6b6b}
+.jmono{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis}
+
+.dir{display:flex;gap:12px;margin-bottom:24px}
+.dinp{flex:1;background:var(--bg3);border:2px solid var(--border2);border-radius:12px;padding:14px 18px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;transition:all .3s}
+.dinp::placeholder{color:var(--text4)}.dinp:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(100,255,218,.08)}
+.dbtn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);border:none;font-weight:700;font-size:13px;padding:14px 28px;border-radius:12px;cursor:pointer;transition:all .25s;white-space:nowrap;font-family:'Inter',sans-serif}
+.dbtn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(212,168,67,.3)}
+.dg{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.ds{background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:22px;position:relative;overflow:hidden}
+.ds::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.ds:nth-child(1)::before{background:var(--accent)}.ds:nth-child(2)::before{background:var(--green)}.ds:nth-child(3)::before{background:var(--gold)}.ds:nth-child(4)::before{background:var(--accent)}
+.ds .dl{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px}
+.ds .dv{font-family:'Manrope',sans-serif;font-weight:800;font-size:26px;line-height:1.3}
+.ds:nth-child(1) .dv{color:var(--accent)}.ds:nth-child(2) .dv{color:var(--green)}.ds:nth-child(3) .dv{color:var(--gold)}.ds:nth-child(4) .dv{color:var(--accent)}
+
+.eg{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.ec{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;position:relative;overflow:hidden;transition:all .3s}
+.ec:hover{transform:translateY(-4px);border-color:var(--border2)}
+.ec::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.ec.e1::before{background:linear-gradient(90deg,var(--green),var(--accent))}.ec.e2::before{background:linear-gradient(90deg,var(--red),#f97316)}.ec.e3::before{background:linear-gradient(90deg,var(--gold),var(--accent))}
+.ec .ei{font-size:28px;margin-bottom:14px}
+.ec h4{font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px}
+.ec .em{font-family:'Manrope',sans-serif;font-weight:800;font-size:44px;line-height:1.15;margin:10px 0}
+.ec.e1 .em{color:var(--green)}.ec.e2 .em{color:var(--red)}.ec.e3 .em{color:var(--gold)}
+.ec p{font-size:13px;color:var(--text2);line-height:1.7}
+
+.fbox{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;margin-top:24px;position:relative;overflow:hidden}
+.fbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--accent))}
+.fcode{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:24px;margin:20px 0;font-family:'DM Mono',monospace;font-size:12px;line-height:2.2;overflow-x:auto}
+
+.exg{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:28px}
+.exc{border-radius:16px;padding:28px;overflow:hidden}
+.exc.good{background:rgba(74,222,128,.02);border:1px solid rgba(74,222,128,.1)}.exc.bad{background:rgba(239,68,68,.02);border:1px solid rgba(239,68,68,.1)}
+.ext{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;margin-bottom:16px}
+.exc.good .ext{color:var(--green)}.exc.bad .ext{color:var(--red)}
+.exr{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:13px}
+.exr:last-child{border:none}.exr .k{color:var(--text3);font-family:'DM Mono',monospace;font-size:11px}.exr .v{font-family:'DM Mono',monospace;font-size:12px}
+.exres{margin-top:16px;padding:16px;border-radius:12px;text-align:center;font-family:'Manrope',sans-serif;font-weight:800;font-size:22px}
+.exc.good .exres{background:rgba(74,222,128,.06);color:var(--green);border:1px solid rgba(74,222,128,.12)}
+.exc.bad .exres{background:rgba(239,68,68,.06);color:var(--red);border:1px solid rgba(239,68,68,.12)}
+
+.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.rc{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;text-align:center;transition:all .3s;overflow:hidden}
+.rc:hover{transform:translateY(-4px);border-color:var(--border2)}
+.rc .ri{font-size:40px;margin-bottom:14px}
+.rc h4{font-family:'Manrope',sans-serif;font-weight:700;font-size:17px;margin-bottom:4px}
+.rc .rp{font-family:'Manrope',sans-serif;font-weight:800;font-size:36px;color:var(--gold);margin:12px 0;line-height:1.2}
+.rc p{font-size:13px;color:var(--text2);line-height:1.7}
+
+footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
+.fti{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+.ftl{font-family:'DM Mono',monospace;font-size:11px;color:var(--text4)}.ftl .ftc{color:var(--text3);font-size:9px;display:block;margin-top:4px;word-break:break-all}
+.ftlk{display:flex;gap:16px}.ftlk a{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);transition:color .2s}.ftlk a:hover{color:var(--accent)}
+.ftsrc{margin-top:10px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);text-align:center}.ftsrc strong{color:var(--accent)}
+#debugLog{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px;max-height:90px;overflow-y:auto;display:none}
+
+/* Teaser overlay for Phase 2 features */
+.teaser-wrap{position:relative;border-radius:22px;overflow:hidden}
+.teaser-content{filter:blur(5px) saturate(.7);opacity:.55;pointer-events:none;user-select:none;transition:filter .4s,opacity .4s}
+.teaser-wrap:hover .teaser-content{filter:blur(3px) saturate(.8);opacity:.7}
+.teaser-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center,rgba(11,15,26,.45) 0%,rgba(11,15,26,.7) 100%)}
+.teaser-badge{background:linear-gradient(135deg,rgba(36,49,82,.95),rgba(17,24,39,.98));border:1px solid var(--border2);border-radius:18px;padding:24px 36px;text-align:center;backdrop-filter:blur(8px);box-shadow:0 12px 40px rgba(0,0,0,.5),0 0 0 1px rgba(212,168,67,.15);position:relative;max-width:440px}
+.teaser-badge::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--accent),var(--gold));border-radius:18px 18px 0 0}
+.teaser-badge-eyebrow{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.18em;text-transform:uppercase;font-weight:600;margin-bottom:10px}
+.teaser-badge-title{font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;color:var(--gold);letter-spacing:-.01em;line-height:1.2;margin-bottom:6px}
+.teaser-badge-sub{font-size:12px;color:var(--text2);line-height:1.5}
+
+@media(max-width:960px){.hero{grid-template-columns:1fr;text-align:center}.hero p{margin:0 auto 32px}.hero-btns{justify-content:center}.hero-img{max-width:400px;margin:0 auto}}
+@media(max-width:768px){.stats-row{grid-template-columns:repeat(3,1fr)}.dg{grid-template-columns:1fr 1fr}.eg,.rg{grid-template-columns:1fr}.exg{grid-template-columns:1fr}.fr{grid-template-columns:60px 1fr 80px 80px 60px;font-size:10px}.jgrid{grid-template-columns:repeat(2,1fr)}.jw-row{grid-template-columns:94px 1fr 94px 94px 66px}}
+@media(max-width:640px){.hero h1{font-size:36px}.stats-row{grid-template-columns:repeat(2,1fr)}.dg{grid-template-columns:1fr}.dir{flex-direction:column}.cd-wrap{padding:18px 20px;gap:8px}.cd-n{width:52px;height:52px;font-size:32px}.nav-links{display:none}.tb th:nth-child(n+5),.tb td:nth-child(n+5){display:none}.fr{grid-template-columns:55px 1fr 70px 60px}.fr>:nth-child(4){display:none}.jgrid{grid-template-columns:1fr}.jw-row{grid-template-columns:84px 1fr 86px}.jw-row>:nth-child(4),.jw-row>:nth-child(5){display:none}}
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+<div class="blob blob-1"></div><div class="blob blob-2"></div>
+
+
+<nav><div class="inner">
+  <div class="logo"><img src="ctr-logo.png" alt="CTR"><span class="logo-text">CTR</span><span class="logo-tag">Season 1</span></div>
+  <div class="nav-links">
+    <a href="#leaderboard">Leaderboard</a>
+    <a href="#feed">Live Feed</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#scoring">Scoring</a>
+    <a href="#rewards">Rewards</a>
+  </div>
+  <button class="cta-btn" onclick="alert('Wallet connect coming Phase 2!')">Connect Wallet</button>
+</div></nav>
+
+<div class="ticker"><div class="container"><div class="ticker-track" id="ticker"></div></div></div>
+
+<div class="container">
+  <section class="hero">
+    <div class="hero-left">
+      <div class="hero-chip"><div class="dot"></div><span>Season 1 · Live on Cronos</span></div>
+      <h1>CTR<span class="g">Trading Season</span></h1>
+      <p>Grow the Treasury. Earn Rewards. Every trade is tracked on-chain in real time.</p>
+      <div class="hero-btns">
+        <button class="btn-gold" onclick="document.getElementById('leaderboard').scrollIntoView({behavior:'smooth'})">View Leaderboard</button>
+        <button class="btn-o" onclick="window.open('https://obsidian.finance/?outputCurrency=0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC','_blank')">Buy CTR</button>
+      </div>
+    </div>
+    <div class="hero-img"><img src="wolf-trader.jpg" alt="CTR Trading Wolf"></div>
+  </section>
+
+  <div class="stats-row">
+    <div class="st"><div class="sl">CTR Price</div><div class="sv ld" id="sPrice">$0.00</div><div class="ss" id="sPriceChange" style="color:var(--text4)">Loading...</div></div>
+    <div class="st"><div class="sl">24h Volume</div><div class="sv ld" id="sVolume">$0</div><div class="ss" style="color:var(--text3)">DexScreener</div></div>
+    <div class="st"><div class="sl">Liquidity</div><div class="sv ld" id="sLiquidity">$0</div><div class="ss" style="color:var(--text3)">Pool</div></div>
+    <div class="st"><div class="sl">Traders</div><div class="sv ld" id="sTraders">0</div><div class="ss" style="color:var(--text3)">This season</div></div>
+    <div class="st"><div class="sl">Total Trades</div><div class="sv ld" id="sTrades">0</div><div class="ss" style="color:var(--text3)">Buys+Sells</div></div>
+  </div>
+
+  <section class="cd-sec">
+    <div class="cd-status" id="cdStatus" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);text-align:center;margin-bottom:12px;letter-spacing:.18em;text-transform:uppercase">Season starts in</div>
+    <div class="cd-wrap">
+      <div class="cd-unit"><div class="cd-n" id="cdD">00</div><div class="cd-l">Days</div></div><span class="cd-c">:</span>
+      <div class="cd-unit"><div class="cd-n" id="cdH">00</div><div class="cd-l">Hours</div></div><span class="cd-c">:</span>
+      <div class="cd-unit"><div class="cd-n" id="cdM">00</div><div class="cd-l">Min</div></div><span class="cd-c">:</span>
+      <div class="cd-unit"><div class="cd-n" id="cdS">00</div><div class="cd-l">Sec</div></div>
+    </div>
+    <div class="prog-row"><div class="prog-bg"><div class="prog-fill" id="seasonFill" style="width:0%"></div></div><div class="prog-labels"><span>Day <span id="dayNum">0</span>/30</span><span id="seasonPct">0%</span></div></div>
+  </section>
+
+  <section class="section" id="jackpot">
+    <div class="sec-head"><div class="sec-icon" style="background:rgba(212,168,67,.06)">&#x1F3B0;</div><div class="sec-title">Tax Return Jackpot</div></div>
+    <div class="sec-sub">Every buy &gt;= $10 gets one random jackpot roll. CTR tax = 10%, winners receive 10%-100% of their paid tax back.</div>
+    <div class="teaser-wrap">
+      <div class="teaser-overlay">
+        <div class="teaser-badge">
+          <div class="teaser-badge-eyebrow">Coming in Season 2</div>
+          <div class="teaser-badge-title">Tax Return Jackpot</div>
+          <div class="teaser-badge-sub">On-chain Merkle distributor. Automatic refunds for lucky buys.</div>
+        </div>
+      </div>
+      <div class="teaser-content">
+        <div class="jcard">
+          <div class="jtop">
+            <div><div class="card-t" style="font-size:38px">&#x1F3B2; Random Tax Return on Every Buy</div><div style="color:var(--text3);margin-top:6px">Bigger refunds are much rarer. Full 100% tax refund is ultra rare.</div></div>
+            <div style="text-align:right"><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);letter-spacing:.14em;text-transform:uppercase">Recent Jackpots</div><div class="jtitle">--</div></div>
+          </div>
+          <div class="jgrid">
+            <div class="jtile"><div class="jp" style="color:var(--green)">10%</div><div class="jc">Tax refund tier</div><div class="jr c">Common</div></div>
+            <div class="jtile"><div class="jp" style="color:var(--accent)">25%</div><div class="jc">Tax refund tier</div><div class="jr u">Uncommon</div></div>
+            <div class="jtile"><div class="jp" style="color:var(--gold)">50%</div><div class="jc">Tax refund tier</div><div class="jr r">Rare</div></div>
+            <div class="jtile"><div class="jp" style="color:#fb923c">75%</div><div class="jc">Tax refund tier</div><div class="jr e">Epic</div></div>
+            <div class="jtile"><div class="jp" style="color:#ff6b6b">100%</div><div class="jc">Tax refund tier</div><div class="jr l">Legendary</div></div>
+          </div>
+          <div class="jhow"><strong>How it works:</strong> only <strong>BUY</strong> trades with value <strong>&gt;= $10</strong> can trigger. Your transaction hash determines a deterministic jackpot roll (same tx = same result). Winners get <strong>10%-100%</strong> of their paid taxes back.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="feed">
+    <div class="sec-head"><div class="sec-icon" style="background:rgba(100,255,218,.06)">&#x1F4E1;</div><div class="sec-title">Live Trade Feed</div></div>
+    <div class="sec-sub">Real CTR buys &amp; sells from the Cronos blockchain. Full wallet addresses -- click to explore.</div>
+    <div class="card"><div class="card-hd"><div class="card-t">On-Chain Transactions</div><div id="feedStatus" class="badge bl"><div class="d"></div>Connecting...</div></div>
+      <div class="fscroll"><div class="fr fh"><span>Type</span><span>Wallet</span><span>USD Value</span><span>CTR Amount</span><span>Time</span></div><div id="feedBody"><div class="tbl"><div class="spin"></div><div style="margin-top:14px;color:var(--text4);font-size:12px">Fetching on-chain trades...</div></div></div></div>
+    </div><div id="debugLog"></div>
+  </section>
+
+  <section class="section" id="leaderboard">
+    <div class="sec-head"><div class="sec-icon" style="background:rgba(212,168,67,.06)">&#x1F3C6;</div><div class="sec-title">Live Leaderboard</div></div>
+    <div class="sec-sub">Ranked by final score. On-chain CTR transfer data.</div>
+    <div class="card"><div class="card-hd"><div style="display:flex;align-items:center;gap:12px"><div class="card-t">Top Traders</div><div class="badge bl"><div class="d"></div>LIVE</div></div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text4)" id="lbCount">--</div></div>
+      <div style="overflow-x:auto"><table class="tb"><thead><tr><th style="width:46px">#</th><th>Wallet</th><th>Score</th><th>Buy Vol</th><th>Sell Vol</th><th>Anti-Wash</th><th>Hold Bonus</th></tr></thead><tbody id="lbBody"><tr><td colspan="7" class="tbl"><div class="spin"></div></td></tr></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="section" id="dashboard">
+    <div class="sec-head"><div class="sec-icon" style="background:rgba(100,255,218,.06)">&#x1F4CA;</div><div class="sec-title">Personal Dashboard</div></div>
+    <div class="sec-sub">Enter any wallet to see trading score and stats.</div>
+    <div class="card" style="padding:28px">
+      <div class="dir"><input class="dinp" id="walletInput" type="text" placeholder="0x... enter any wallet address" spellcheck="false"><button class="dbtn" onclick="lookupWallet()">Look Up</button></div>
+      <div id="dashResult" style="display:none"><div class="dg"><div class="ds"><div class="dl">Your Rank</div><div class="dv" id="dRank">#--</div></div><div class="ds"><div class="dl">Final Score</div><div class="dv" id="dScore">--</div></div><div class="ds"><div class="dl">Anti-Wash</div><div class="dv" id="dAntiWash">--</div></div><div class="ds"><div class="dl">Hold Bonus</div><div class="dv" id="dBonus">--</div></div></div>
+        <div style="margin-top:16px"><div class="prog-labels" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);margin-bottom:6px"><span id="dpLabel">Progress</span><span id="dpPct">0%</span></div><div class="prog-bg"><div class="prog-fill" id="dpFill" style="width:0%"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="scoring">
+    <div class="sec-head"><div class="sec-icon" style="background:rgba(212,168,67,.06)">&#x2699;&#xFE0F;</div><div class="sec-title">How Scoring Works</div></div>
+    <div class="sec-sub">Transparent on-chain scoring. Rewards real capital contribution.</div>
+    <div class="eg">
+      <div class="ec e1"><div class="ei">&#x1F4B0;</div><h4>Buy Volume</h4><div class="em">3x</div><p>Every dollar of buy volume earns <strong>3 points</strong>. Buying grows the treasury.</p></div>
+      <div class="ec e2"><div class="ei">&#x1F4E4;</div><h4>Sell Volume</h4><div class="em">1x</div><p>Sell volume earns <strong>1 point</strong>. Natural but less treasury impact.</p></div>
+      <div class="ec e3"><div class="ei">&#x1F6E1;&#xFE0F;</div><h4>Anti-Wash</h4><div class="em">0-1x</div><p>Sells approx Buys -> score -> <strong>zero</strong>. Net buyers win.</p></div>
+    </div>
+    <div class="fbox">
+      <h3 style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;margin-bottom:4px">Scoring Formula</h3>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Repeated buy-sell without growing position = score -> 0. Only real inflow earns max rewards.</p>
+      <div class="fcode"><span style="color:var(--text4)">// Step 1: Raw Points</span>
+<span style="color:var(--accent)">Raw Points</span> = (<span style="color:var(--gold)">3</span> x Buy Volume) + (<span style="color:var(--gold)">1</span> x Sell Volume)
+
+<span style="color:var(--text4)">// Step 2: Anti-Wash Factor</span>
+<span style="color:var(--accent)">Anti-Wash</span> = max( min( (Buys - Sells) / Buys, <span style="color:var(--gold)">1</span> ), <span style="color:var(--gold)">0</span> )
+
+<span style="color:var(--text4)">// Step 3: Holding Bonus (max +50%)</span>
+<span style="color:var(--accent)">Holding Bonus</span> = <span style="color:var(--gold)">1</span> + (Hold Duration / Season Length) x <span style="color:var(--gold)">0.5</span>
+
+<span style="color:var(--gold);font-weight:600">// FINAL SCORE
+Final Score = Raw Points x Anti-Wash x Holding Bonus</span></div>
+    </div>
+    <div class="exg">
+      <div class="exc good"><div class="ext">User A -- Real Buyer</div><div class="exr"><span class="k">Buys</span><span class="v">$1,000</span></div><div class="exr"><span class="k">Sells</span><span class="v">$100</span></div><div class="exr"><span class="k">Raw Points</span><span class="v">3,100</span></div><div class="exr"><span class="k">Anti-Wash</span><span class="v">0.90</span></div><div class="exr"><span class="k">Hold Bonus</span><span class="v">1.35x</span></div><div class="exres">Score: 3,766</div></div>
+      <div class="exc bad"><div class="ext">User B -- Wash Trader</div><div class="exr"><span class="k">Buys</span><span class="v">$1,000</span></div><div class="exr"><span class="k">Sells</span><span class="v">$950</span></div><div class="exr"><span class="k">Raw Points</span><span class="v">3,950</span></div><div class="exr"><span class="k">Anti-Wash</span><span class="v">0.05</span></div><div class="exr"><span class="k">Hold Bonus</span><span class="v">1.10x</span></div><div class="exres">Score: 217</div></div>
+    </div>
+  </section>
+
+  <section class="section" id="rewards">
+    <div class="sec-head"><div class="sec-icon" style="background:rgba(212,168,67,.06)">&#x1F381;</div><div class="sec-title">Rewards Distribution</div></div>
+    <div class="sec-sub">End of each season, rewards across three tiers.</div>
+    <div class="rg">
+      <div class="rc"><div class="ri">&#x1F947;</div><h4>Top Traders</h4><div class="rp">50%</div><p>Top 10 wallets share 50% of the reward pool.</p></div>
+      <div class="rc"><div class="ri">&#x1F3AF;</div><h4>Mid-Tier</h4><div class="rp">30%</div><p>Wallets 11-50 share 30%. Participation counts.</p></div>
+      <div class="rc"><div class="ri">&#x1F3B2;</div><h4>Random Winners</h4><div class="rp">20%</div><p>20% randomly given to qualifying participants.</p></div>
+    </div>
+  </section>
+
+  <footer><div class="fti"><div class="ftl">CTR · Cronos Treasury Reserve · Season 1<span class="ftc">Contract: 0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC</span></div><div class="ftlk"><a href="https://cronostreasury.github.io" target="_blank">Main Site</a><a href="https://dexscreener.com/cronos/0xf118aa245b0627b4752607620d0048b492a5f4fb" target="_blank">DexScreener</a><a href="https://cronostreasury.github.io/CTR-Governance/" target="_blank">Governance</a></div></div><div class="ftsrc">Data from <strong>Cronos Explorer API</strong> &amp; <strong>DexScreener</strong> · Auto-refresh 30s</div></footer>
+</div>
+
+<script>
+// === CANVAS BACKGROUND ===
+const cv=document.getElementById('bgCanvas'),cx=cv.getContext('2d');let W,H,pts=[];
+function rsz(){W=cv.width=innerWidth;H=cv.height=innerHeight}rsz();addEventListener('resize',rsz);
+function P(){this.x=Math.random()*W;this.y=Math.random()*H;this.r=Math.random()*1.2+.3;this.dx=(Math.random()-.5)*.25;this.dy=(Math.random()-.5)*.25;this.a=Math.random()*.3+.08;this.c=Math.random()>.5?'100,255,218':'212,168,67'}
+P.prototype.draw=function(){cx.beginPath();cx.arc(this.x,this.y,this.r,0,Math.PI*2);cx.fillStyle='rgba('+this.c+','+this.a+')';cx.fill()};
+P.prototype.update=function(){this.x+=this.dx;this.y+=this.dy;if(this.x<0||this.x>W)this.dx*=-1;if(this.y<0||this.y>H)this.dy*=-1};
+for(let i=0;i<60;i++)pts.push(new P());
+function anim(){cx.clearRect(0,0,W,H);pts.forEach(p=>{p.update();p.draw()});
+for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+if(d<100){cx.beginPath();cx.moveTo(pts[i].x,pts[i].y);cx.lineTo(pts[j].x,pts[j].y);cx.strokeStyle='rgba(100,255,218,'+(1-d/100)*.04+')';cx.stroke()}}
+requestAnimationFrame(anim)}anim();
+
+// === CONSTANTS ===
+const CTR='0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC';
+const LP='0xf118aa245b0627b4752607620d0048b492a5f4fb';
+const PRIZE_WALLET='0x32bA7097fC2ce5b1A118Bf3347b492e414cB7C35';
+const EXP='https://explorer.cronos.org';
+const SD=30;
+const SS=new Date('2026-05-15T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
+const SS_TS=SS.getTime()/1e3;
+const SNAPSHOT_URL='data/season.json';
+
+let price=0,trades=[],tm={},lb=[],jackpots=[];
+
+const dbg=document.getElementById('debugLog');
+let debugVisible=false;
+function log(m){console.log('[CTR]',m);if(dbg){dbg.innerHTML+=new Date().toLocaleTimeString()+' '+m+'<br>';dbg.scrollTop=dbg.scrollHeight;}if(debugVisible&&dbg)dbg.style.display='block'}
+function fU(n){if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)}
+function fN(n){return n.toLocaleString('en-US',{maximumFractionDigits:0})}
+function fC(n){if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toFixed(0)}
+function tA(ts){const s=Math.floor((Date.now()-ts*1e3)/1e3);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<864e2)return Math.floor(s/3600)+'h ago';return Math.floor(s/864e2)+'d ago'}
+function $(id){return document.getElementById(id)}
+function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
+
+// === SNAPSHOT LOADER ===
+// Single fetch of pre-computed JSON. No API key, no RPC, no client-side scoring.
+async function loadSnapshot(){
+  setSt('Loading...',1);
+  try{
+    const r=await fetch(SNAPSHOT_URL+'?t='+Date.now()); // cache-bust
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const s=await r.json();
+
+    price=s.market.price;
+
+    // Map compact keys to readable names used by render functions
+    trades=s.trades.map(t=>({hash:t.h,ts:t.t,type:t.ty,trader:t.w,ctr:t.ctr,usd:t.usd}));
+    jackpots=s.jackpots.map(j=>({hash:j.h,ts:j.t,trader:j.w,tierPct:j.tier,className:j.cn,usd:j.buy_usd,refund:j.refund}));
+
+    tm={};
+    Object.entries(s.wallets).forEach(([addr,w])=>{tm[addr]={addr,...w}});
+    lb=Object.values(tm).sort((a,b)=>(a.rank||9999)-(b.rank||9999));
+
+    // Update market display + ticker
+    const m=s.market;
+    $('sPrice').textContent='$'+m.price.toFixed(6);$('sPrice').classList.remove('ld');
+    $('sPriceChange').textContent=(m.change24h>=0?'+':'')+m.change24h.toFixed(2)+'% (24h)';
+    $('sPriceChange').style.color=m.change24h>=0?'var(--green)':'var(--red)';
+    $('sVolume').textContent=fU(m.volume24h);$('sVolume').classList.remove('ld');
+    $('sLiquidity').textContent=fU(m.liquidity);$('sLiquidity').classList.remove('ld');
+    updTicker(m.price,m.change24h,m.volume24h,m.liquidity,m.buys24h,m.sells24h);
+
+    renderFeed();renderJackpots();renderLB();updCounts(s.stats);
+
+    const ageMin=Math.max(0,Math.floor((Date.now()/1000-s.updatedAt)/60));
+    setSt(ageMin<2?'LIVE · just updated':'LIVE · '+ageMin+'m ago',1);
+    log('Snapshot OK: '+s.stats.totalTrades+' trades, '+s.stats.totalWallets+' wallets, $'+m.price.toFixed(6));
+  }catch(e){
+    log('Snapshot load failed: '+e.message);
+    setSt('Snapshot unavailable',0);
+    if(!trades.length){
+      $('feedBody').innerHTML='<div class="tbe">Snapshot not available yet. The season data updates every 5 minutes via GitHub Actions.</div>';
+      $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data yet</td></tr>';
+    }
+  }
+}
+
+function renderFeed(){
+  const fb=$('feedBody');
+  const feedTrades=trades.slice(0,60);
+  if(!feedTrades.length){fb.innerHTML='<div class="tbe">No season trades yet.</div>';return}
+  fb.innerHTML='';
+  feedTrades.forEach((tr,i)=>{
+    const row=document.createElement('div');
+    row.className='fr'+(i<3?' fnew':'');
+    row.innerHTML='<div class="ft '+(tr.type==='buy'?'buy':'sell')+'">'+(tr.type==='buy'?'BUY':'SELL')+'</div>'
+      +'<div class="fw"><a href="'+EXP+'/address/'+tr.trader+'" target="_blank" title="'+tr.trader+'">'+tr.trader+'</a></div>'
+      +'<div class="fa" style="color:'+(tr.type==='buy'?'var(--green)':'var(--red)')+'">'+(tr.type==='buy'?'+':'-')+fU(tr.usd)+'</div>'
+      +'<div class="fa" style="color:var(--text2)">'+fC(tr.ctr)+' CTR</div>'
+      +'<div class="ftm">'+tA(tr.ts)+'</div>';
+    fb.appendChild(row);
+  });
+}
+
+function renderJackpots(){
+  // Jackpot section is teaser-only in Season 1 (Phase 2 feature).
+  // No-op: leave the blurred placeholder content as-is.
+}
+
+function renderLB(){
+  const tb=$('lbBody');
+  if(!lb.length){tb.innerHTML='<tr><td colspan="7" class="tbe">No traders yet.</td></tr>';$('lbCount').textContent='0';return}
+  $('lbCount').textContent=lb.length+' wallets';tb.innerHTML='';
+  lb.slice(0,50).forEach((t,i)=>{
+    const r=i+1;
+    const rc=r===1?'rk1':r===2?'rk2':r===3?'rk3':'rkn';
+    const ac=t.aw>.5?'var(--green)':t.aw>.2?'var(--gold)':'var(--red)';
+    const ap=(t.aw*100).toFixed(0);
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td><div class="rk '+rc+'">'+r+'</div></td>'
+      +'<td class="wc"><a href="'+EXP+'/address/'+t.addr+'" target="_blank">'+t.addr+'</a></td>'
+      +'<td class="sc">'+fN(Math.round(t.fs))+'</td>'
+      +'<td class="vb">+'+fU(t.bV)+'</td>'
+      +'<td class="vs">-'+fU(t.sV)+'</td>'
+      +'<td><div class="awb"><div class="awf" style="width:'+ap+'%;background:'+ac+'"></div></div><span style="font-family:\'DM Mono\',monospace;font-size:10px;color:'+ac+';font-weight:600">'+ap+'%</span></td>'
+      +'<td><span class="hbc">'+t.hb.toFixed(2)+'x</span></td>';
+    tb.appendChild(tr);
+  });
+}
+
+function updCounts(stats){
+  $('sTraders').textContent=stats?stats.totalWallets:Object.keys(tm).length;$('sTraders').classList.remove('ld');
+  const tot=stats?stats.totalTrades:Object.values(tm).reduce((s,t)=>s+t.n,0);
+  $('sTrades').textContent=fN(tot);$('sTrades').classList.remove('ld');
+}
+
+
+async function lookupWallet(){
+  const inp=$('walletInput').value.trim().toLowerCase();
+  if(!inp||!inp.startsWith('0x')||inp.length!==42){alert('Enter valid 42-char wallet');return}
+  $('dashResult').style.display='block';
+
+  const trader=tm[inp];
+  if(!trader||!trader.bV){
+    $('dRank').textContent='N/A';$('dScore').textContent='0';$('dAntiWash').textContent='N/A';$('dBonus').textContent='N/A';
+    $('dpLabel').textContent='No trades in current snapshot';$('dpPct').textContent='--';$('dpFill').style.width='0%';return;
+  }
+  $('dRank').textContent='#'+(trader.rank||lb.findIndex(t=>t.addr===inp)+1);
+  $('dScore').textContent=fN(Math.round(trader.fs||0));
+  $('dAntiWash').textContent=((trader.aw||0)*100).toFixed(0)+'%';
+  $('dBonus').textContent=(trader.hb||1).toFixed(2)+'x';
+  const tiers=[100,500,2e3,1e4,5e4];let cur=0,nxt=tiers[0];const score=trader.fs||0;
+  for(let i=0;i<tiers.length;i++){if(score>=tiers[i]){cur=tiers[i];nxt=tiers[i+1]||tiers[i]*3}else{nxt=tiers[i];break}}
+  const pr=Math.min(100,((score-cur)/(nxt-cur))*100);
+  $('dpLabel').textContent='To '+fN(nxt)+' pts';$('dpPct').textContent=pr.toFixed(0)+'%';$('dpFill').style.width=pr+'%';
+}
+$('walletInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupWallet()});
+
+function updCD(){
+  const now=new Date();
+  let diff,labelTarget;
+  if(now<SS){
+    // Pre-season: countdown to start
+    diff=SS-now;labelTarget='start';
+  }else if(now<SE){
+    // Live season: countdown to end
+    diff=SE-now;labelTarget='end';
+  }else{
+    // Season ended: freeze at zero
+    diff=0;labelTarget='ended';
+  }
+  $('cdD').textContent=String(Math.floor(diff/864e5)).padStart(2,'0');
+  $('cdH').textContent=String(Math.floor(diff%864e5/36e5)).padStart(2,'0');
+  $('cdM').textContent=String(Math.floor(diff%36e5/6e4)).padStart(2,'0');
+  $('cdS').textContent=String(Math.floor(diff%6e4/1e3)).padStart(2,'0');
+  // Progress bar reflects elapsed time within the season window
+  const el=Math.max(0,Math.min(SE-SS,now-SS));
+  const pct=Math.min(100,el/(SE-SS)*100);
+  $('seasonFill').style.width=pct+'%';
+  $('dayNum').textContent=labelTarget==='start'?'0':Math.min(SD,Math.ceil(el/864e5));
+  $('seasonPct').textContent=pct.toFixed(0)+'%';
+  // Update countdown status label
+  const cdLbl=$('cdStatus');
+  if(cdLbl){
+    cdLbl.textContent=labelTarget==='start'?'Season starts in':labelTarget==='end'?'Season ends in':'Season ended';
+    cdLbl.style.color=labelTarget==='ended'?'var(--red)':labelTarget==='end'?'var(--green)':'var(--accent)';
+  }
+}
+
+function updTicker(p,ch,vol,liq,buys,sells){
+  const cc=ch>=0?'var(--green)':'var(--red)';
+  const items=[{l:'CTR',v:'$'+p.toFixed(6),c:'var(--gold)'},{l:'24h',v:(ch>=0?'+':'')+ch.toFixed(2)+'%',c:cc},{l:'Vol',v:fU(vol),c:'var(--text)'},{l:'Liq',v:fU(liq),c:'var(--text)'},{l:'Buys',v:String(buys),c:'var(--green)'},{l:'Sells',v:String(sells),c:'var(--red)'},{l:'Pair',v:'CTR/WCRO',c:'var(--accent)'}];
+  $('ticker').innerHTML=[...items,...items].map((it,i)=>(i?'<div class="tsep"></div>':'')+'<div class="ti"><span class="tl">'+it.l+'</span><span class="tv" style="color:'+it.c+'">'+it.v+'</span></div>').join('');
+}
+
+// Debug toggle: Alt+D
+document.addEventListener('keydown',e=>{
+  if(e.key==='d'&&e.altKey){debugVisible=!debugVisible;if(dbg)dbg.style.display=debugVisible?'block':'none';}
+});
+
+updCD();setInterval(updCD,1e3);
+updTicker(0,0,0,0,0,0);
+async function init(){log('Init CTR Trading Season (snapshot mode)...');await loadSnapshot()}
+init();
+// Refresh from snapshot every 60s. Snapshot itself updates every 5min via GitHub Actions.
+setInterval(loadSnapshot,60000);
+</script>
+</body>
+</html>
