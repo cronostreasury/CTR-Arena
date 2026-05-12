@@ -454,8 +454,8 @@ async function loadSnapshot(){
     log('Snapshot load failed: '+e.message);
     setSt('Snapshot unavailable',0);
     if(!trades.length){
-      $('feedBody').innerHTML='<div class="tbe">Snapshot not available yet. The season data updates every 5 minutes via GitHub Actions.</div>';
-      $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">No data yet</td></tr>';
+      $('feedBody').innerHTML='<div class="tbe">Snapshot not available yet. Auto-refresh every 5 minutes — check back shortly.</div>';
+      $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting for the next snapshot to load.</td></tr>';
     }
   }
 }
@@ -487,7 +487,21 @@ function renderJackpots(){
 
 function renderLB(){
   const tb=$('lbBody');
-  if(!lb.length){tb.innerHTML='<tr><td colspan="7" class="tbe">No traders yet.</td></tr>';$('lbCount').textContent='0';return}
+  if(!lb.length){
+    const now=Date.now();
+    let msg;
+    if(now<SS.getTime()){
+      const daysLeft=Math.ceil((SS.getTime()-now)/864e5);
+      msg='<div style="font-family:\'Manrope\',sans-serif;font-weight:700;font-size:15px;color:var(--gold);margin-bottom:6px">Season starts in '+daysLeft+' day'+(daysLeft===1?'':'s')+'</div><div style="color:var(--text3);font-size:12px">Leaderboard goes live on '+SS.toISOString().slice(0,10)+' at 00:00 UTC. Every CTR buy and sell from that moment counts toward your score.</div>';
+    }else if(now>=SE.getTime()){
+      msg='<div style="font-family:\'Manrope\',sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">Season ended</div><div style="color:var(--text3);font-size:12px">No qualifying trades were recorded this season.</div>';
+    }else{
+      msg='<div style="font-family:\'Manrope\',sans-serif;font-weight:700;font-size:15px;color:var(--accent);margin-bottom:6px">Be the first trader</div><div style="color:var(--text3);font-size:12px">The first CTR buy or sell of the season will appear here. Snapshot updates every 5 minutes.</div>';
+    }
+    tb.innerHTML='<tr><td colspan="7" class="tbe">'+msg+'</td></tr>';
+    $('lbCount').textContent='0';
+    return;
+  }
   $('lbCount').textContent=lb.length+' wallets';tb.innerHTML='';
   lb.slice(0,50).forEach((t,i)=>{
     const r=i+1;
