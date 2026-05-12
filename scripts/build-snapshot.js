@@ -115,13 +115,19 @@ async function fetchAllTransfers() {
   const TRANSFER_SIG = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
   const lpPad = '0x' + '0'.repeat(24) + LP.slice(2).toLowerCase();
   const CHUNK = 2000; // Cronos public RPC limit
+  const FRESH_WINDOW_SEC = 7 * 86400; // Always fetch ≥7 days for live feed (pre/post season)
 
-  // Estimate season-start block from current block (Cronos: ~5s blocks)
+  // Determine fetch range: max(season window, last 7 days)
+  // This means Feed always has data even pre-season; Leaderboard filters to season window later.
+  const now = Math.floor(Date.now() / 1000);
+  const fetchStartTs = Math.min(SS_TS, now - FRESH_WINDOW_SEC);
+  const secondsBack = now - fetchStartTs;
+  const estimatedBlocksBack = Math.ceil(secondsBack / 5); // Cronos: ~5s blocks
+
+  // Estimate season-start block from current block
   const latestHex = await rpcCall('eth_blockNumber', []);
   const latest = parseInt(latestHex, 16);
-  const secondsSinceStart = Math.floor(Date.now() / 1000) - SS_TS;
-  const estimatedBlocksBack = Math.ceil(secondsSinceStart / 5);
-  // 10% safety margin so we don't miss anything near the season-start boundary
+  // 10% safety margin so we don't miss anything near the boundary
   const fromBlock = Math.max(0, latest - Math.ceil(estimatedBlocksBack * 1.1));
   const toBlock = latest;
   const totalBlocks = toBlock - fromBlock;
@@ -132,6 +138,7 @@ async function fetchAllTransfers() {
     const end = Math.min(start + CHUNK - 1, toBlock);
     chunks.push({ start, end });
   }
+  console.log(`  Fetch window starts: ${new Date(fetchStartTs * 1000).toISOString()}`);
   console.log(`  Block range: ${fromBlock} → ${toBlock} (${totalBlocks} blocks, ${chunks.length} chunks of ${CHUNK})`);
   console.log(`  Querying eth_getLogs in parallel batches...`);
 
@@ -199,7 +206,7 @@ async function fetchAllTransfers() {
     };
   }).filter(t => {
     const ts = parseInt(t.timeStamp);
-    return ts >= SS_TS && ts < SE_TS;
+    return ts >= fetchStartTs;  // Keep all from fetch window; season-cut happens in buildTrades
   });
 
   // Sort newest first
@@ -304,7 +311,8 @@ function buildTrades(transfers, price, txFromMap) {
 
   for (const tx of transfers) {
     const ts = parseInt(tx.timeStamp || '0');
-    if (!ts || ts < SS_TS || ts >= SE_TS) continue;
+    if (!ts) continue;
+    // No season filter here — Feed shows all trades. Season filter applied later in buildWallets.
 
     const from = (tx.from || '').toLowerCase();
     const to   = (tx.to   || '').toLowerCase();
@@ -343,7 +351,8 @@ function buildTrades(transfers, price, txFromMap) {
       ty: isBuy ? 'buy' : 'sell',
       w: trader,
       ctr,
-      usd: ctr * price
+      usd: ctr * price,
+      inSeason: ts >= SS_TS && ts < SE_TS
     });
   }
 
@@ -444,41 +453,43 @@ async function main() {
   const transfers = await fetchAllTransfers();
 
   if (transfers.length === 0) {
-    throw new Error('Zero transfers returned — preserving previous snapshot.');
+    console.log('  No transfers in fetch window — continuing with empty snapshot.');
+  } else {
+    // Diagnostic: show newest 3 transfers
+    console.log(`  Newest transfers in dataset:`);
+    transfers.slice(0, 3).forEach(t => {
+      const ago = Math.floor((Date.now()/1000 - parseInt(t.timeStamp)) / 60);
+      console.log(`    ${ago}m ago | hash=${t.hash?.slice(0,16)}... | ${t.from?.slice(0,8)} → ${t.to?.slice(0,8)}`);
+    });
   }
-
-  // Diagnostic: show newest 3 transfers
-  console.log(`  Newest transfers in dataset:`);
-  transfers.slice(0, 3).forEach(t => {
-    const ago = Math.floor((Date.now()/1000 - parseInt(t.timeStamp)) / 60);
-    console.log(`    ${ago}m ago | hash=${t.hash?.slice(0,16)}... | ${t.from?.slice(0,8)} → ${t.to?.slice(0,8)}`);
-  });
 
   console.log('\n[3/6] Resolving real trader EOAs (tx.from for each tx)...');
   const txFromMap = await resolveRealTraders(transfers);
 
   console.log('\n[4/6] Building trades...');
   const trades = buildTrades(transfers, market.price, txFromMap);
-  const totalBuys  = trades.filter(t => t.ty === 'buy').length;
-  const totalSells = trades.filter(t => t.ty === 'sell').length;
-  console.log(`  Filtered: ${trades.length} trades (${totalBuys} buys, ${totalSells} sells)`);
+  const seasonTrades = trades.filter(t => t.inSeason);
+  const totalBuys  = seasonTrades.filter(t => t.ty === 'buy').length;
+  const totalSells = seasonTrades.filter(t => t.ty === 'sell').length;
+  console.log(`  Total: ${trades.length} trades | In-season: ${seasonTrades.length} (${totalBuys} buys, ${totalSells} sells)`);
 
   // Diagnostic: show newest 3 trades
   if (trades.length > 0) {
     console.log(`  Newest trades:`);
     trades.slice(0, 3).forEach(t => {
       const ago = Math.floor((Date.now()/1000 - t.t) / 60);
-      console.log(`    ${ago}m ago | ${t.ty.toUpperCase().padEnd(4)} | ${t.w.slice(0,12)}... | ${t.ctr.toFixed(0)} CTR | $${t.usd.toFixed(2)}`);
+      const tag = t.inSeason ? 'SEASON' : 'extra ';
+      console.log(`    ${ago}m ago | [${tag}] ${t.ty.toUpperCase().padEnd(4)} | ${t.w.slice(0,12)}... | ${t.ctr.toFixed(0)} CTR | $${t.usd.toFixed(2)}`);
     });
   }
 
-  console.log('\n[5/6] Computing jackpots...');
-  const jackpots = buildJackpots(trades);
+  console.log('\n[5/6] Computing jackpots (season-trades only)...');
+  const jackpots = buildJackpots(seasonTrades);
   const prizePool = jackpots.reduce((s, j) => s + j.refund, 0);
   console.log(`  Jackpot wins: ${jackpots.length} | Total refunds: $${prizePool.toFixed(2)}`);
 
-  console.log('\n[6/6] Building wallets and scoring...');
-  const wallets = await buildWallets(trades);
+  console.log('\n[6/6] Building wallets and scoring (season-trades only)...');
+  const wallets = await buildWallets(seasonTrades);
   const totalBuyVolume  = wallets.reduce((s, w) => s + w.bV, 0);
   const totalSellVolume = wallets.reduce((s, w) => s + w.sV, 0);
   console.log(`  Ranked: ${wallets.length} wallets | Top score: ${wallets[0]?.fs.toFixed(0) || 0}`);
@@ -503,10 +514,12 @@ async function main() {
   }
 
   // Limit feed and jackpots to keep JSON small (visible in UI anyway)
+  // Feed includes ALL trades (in-season and around it) so it stays alive pre/post season.
   const feedTrades = trades.slice(0, 100).map(t => ({
     h: t.h, t: t.t, ty: t.ty, w: t.w,
     ctr: round(t.ctr, 2),
-    usd: round(t.usd, 2)
+    usd: round(t.usd, 2),
+    s: t.inSeason ? 1 : 0
   }));
 
   const recentJackpots = jackpots.slice(0, 50).map(j => ({
