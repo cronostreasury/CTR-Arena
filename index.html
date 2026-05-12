@@ -255,6 +255,7 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
     <div class="hero-left">
       <div class="hero-chip"><div class="dot"></div><span>Season 1 · Live on Cronos</span></div>
       <h1>CTR<span class="g">Trading Season</span></h1>
+      <p>Grow the Treasury. Earn Rewards. Every trade is tracked on-chain in real time.</p>
       <div class="hero-btns">
         <button class="btn-gold" onclick="document.getElementById('leaderboard').scrollIntoView({behavior:'smooth'})">View Leaderboard</button>
         <button class="btn-o" onclick="window.open('https://obsidian.finance/?outputCurrency=0xF3672F0cF2E45B28AC4a1D50FD8aC2eB555c21FC','_blank')">Buy CTR</button>
@@ -428,7 +429,7 @@ async function loadSnapshot(){
     price=s.market.price;
 
     // Map compact keys to readable names used by render functions
-    trades=s.trades.map(t=>({hash:t.h,ts:t.t,type:t.ty,trader:t.w,ctr:t.ctr,usd:t.usd}));
+    trades=s.trades.map(t=>({hash:t.h,ts:t.t,type:t.ty,trader:t.w,ctr:t.ctr,usd:t.usd,inSeason:t.s===1}));
     jackpots=s.jackpots.map(j=>({hash:j.h,ts:j.t,trader:j.w,tierPct:j.tier,className:j.cn,usd:j.buy_usd,refund:j.refund}));
 
     tm={};
@@ -462,13 +463,16 @@ async function loadSnapshot(){
 function renderFeed(){
   const fb=$('feedBody');
   const feedTrades=trades.slice(0,60);
-  if(!feedTrades.length){fb.innerHTML='<div class="tbe">No season trades yet.</div>';return}
+  if(!feedTrades.length){fb.innerHTML='<div class="tbe">No recent trades found on-chain.</div>';return}
   fb.innerHTML='';
   feedTrades.forEach((tr,i)=>{
     const row=document.createElement('div');
+    // Pre/post-season trades shown faded so they're clearly outside scoring
+    const offSeason=tr.inSeason===false;
     row.className='fr'+(i<3?' fnew':'');
+    if(offSeason)row.style.opacity='.45';
     row.innerHTML='<div class="ft '+(tr.type==='buy'?'buy':'sell')+'">'+(tr.type==='buy'?'BUY':'SELL')+'</div>'
-      +'<div class="fw"><a href="'+EXP+'/address/'+tr.trader+'" target="_blank" title="'+tr.trader+'">'+tr.trader+'</a></div>'
+      +'<div class="fw"><a href="'+EXP+'/address/'+tr.trader+'" target="_blank" title="'+tr.trader+(offSeason?' (outside season window)':'')+'">'+tr.trader+'</a></div>'
       +'<div class="fa" style="color:'+(tr.type==='buy'?'var(--green)':'var(--red)')+'">'+(tr.type==='buy'?'+':'-')+fU(tr.usd)+'</div>'
       +'<div class="fa" style="color:var(--text2)">'+fC(tr.ctr)+' CTR</div>'
       +'<div class="ftm">'+tA(tr.ts)+'</div>';
