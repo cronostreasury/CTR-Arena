@@ -200,8 +200,8 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .exc.good .exres{background:rgba(74,222,128,.06);color:var(--green);border:1px solid rgba(74,222,128,.12)}
 .exc.bad .exres{background:rgba(239,68,68,.06);color:var(--red);border:1px solid rgba(239,68,68,.12)}
 
-.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.rc{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;text-align:center;transition:all .3s;overflow:hidden}
+.rg{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.rc{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:26px 20px;text-align:center;transition:all .3s;overflow:hidden}
 .rc:hover{transform:translateY(-4px);border-color:var(--border2)}
 .rc .ri{font-size:40px;margin-bottom:14px}
 .rc h4{font-family:'Manrope',sans-serif;font-weight:700;font-size:17px;margin-bottom:4px}
@@ -227,7 +227,7 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
 .teaser-badge-sub{font-size:12px;color:var(--text2);line-height:1.5}
 
 @media(max-width:960px){.hero{grid-template-columns:1fr;text-align:center}.hero p{margin:0 auto 32px}.hero-btns{justify-content:center}.hero-img{max-width:400px;margin:0 auto}}
-@media(max-width:768px){.stats-row{grid-template-columns:repeat(3,1fr)}.dg{grid-template-columns:1fr 1fr}.eg,.rg{grid-template-columns:1fr}.exg{grid-template-columns:1fr}.fr{grid-template-columns:60px 1fr 80px 80px 60px;font-size:10px}.jgrid{grid-template-columns:repeat(2,1fr)}.jw-row{grid-template-columns:94px 1fr 94px 94px 66px}}
+@media(max-width:768px){.stats-row{grid-template-columns:repeat(3,1fr)}.dg{grid-template-columns:1fr 1fr}.eg{grid-template-columns:1fr}.rg{grid-template-columns:1fr 1fr}.exg{grid-template-columns:1fr}.fr{grid-template-columns:60px 1fr 80px 80px 60px;font-size:10px}.jgrid{grid-template-columns:repeat(2,1fr)}.jw-row{grid-template-columns:94px 1fr 94px 94px 66px}}
 @media(max-width:640px){.hero h1{font-size:36px}.stats-row{grid-template-columns:repeat(2,1fr)}.dg{grid-template-columns:1fr}.dir{flex-direction:column}.cd-wrap{padding:18px 20px;gap:8px}.cd-n{width:52px;height:52px;font-size:32px}.nav-links{display:none}.tb th:nth-child(n+5),.tb td:nth-child(n+5){display:none}.fr{grid-template-columns:55px 1fr 70px 60px}.fr>:nth-child(4){display:none}.jgrid{grid-template-columns:1fr}.jw-row{grid-template-columns:84px 1fr 86px}.jw-row>:nth-child(4),.jw-row>:nth-child(5){display:none}}
 </style>
 </head>
@@ -371,11 +371,12 @@ Final Score = Raw Points x Anti-Wash x Holding Bonus</span></div>
 
   <section class="section" id="rewards">
     <div class="sec-head"><div class="sec-icon" style="background:rgba(212,168,67,.06)">&#x1F381;</div><div class="sec-title">Rewards Distribution</div></div>
-    <div class="sec-sub">End of each season, rewards across three tiers.</div>
+    <div class="sec-sub">Four winners share the reward pool at season end. Top 3 by score, plus one lucky random trader.</div>
     <div class="rg">
-      <div class="rc"><div class="ri">&#x1F947;</div><h4>Top Traders</h4><div class="rp">50%</div><p>Top 10 wallets share 50% of the reward pool.</p></div>
-      <div class="rc"><div class="ri">&#x1F3AF;</div><h4>Mid-Tier</h4><div class="rp">30%</div><p>Wallets 11-50 share 30%. Participation counts.</p></div>
-      <div class="rc"><div class="ri">&#x1F3B2;</div><h4>Random Winners</h4><div class="rp">20%</div><p>20% randomly given to qualifying participants.</p></div>
+      <div class="rc"><div class="ri">&#x1F947;</div><h4>1st Place</h4><div class="rp">50%</div><p>The wallet with the <strong>highest final score</strong> at season close.</p></div>
+      <div class="rc"><div class="ri">&#x1F948;</div><h4>2nd Place</h4><div class="rp">25%</div><p>The <strong>runner-up</strong> by final score.</p></div>
+      <div class="rc"><div class="ri">&#x1F949;</div><h4>3rd Place</h4><div class="rp">15%</div><p>Third-highest score on the leaderboard.</p></div>
+      <div class="rc"><div class="ri">&#x1F3B2;</div><h4>Lucky Winner</h4><div class="rp">10%</div><p><strong>One random</strong> qualifying trader, drawn at season end.</p></div>
     </div>
   </section>
 
