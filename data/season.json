@@ -1,5 +1,5 @@
 {
-  "updatedAt": 1778793466,
+  "updatedAt": 1778797960,
   "seasonStart": 1778803200,
   "seasonEnd": 1781395200,
   "seasonDays": 30,
@@ -12,7 +12,7 @@
     "sells24h": 2
   },
   "stats": {
-    "totalTrades": 1,
+    "totalTrades": 2,
     "totalBuys": 0,
     "totalSells": 0,
     "totalWallets": 0,
@@ -23,6 +23,15 @@
   },
   "wallets": {},
   "trades": [
+    {
+      "h": "0x2ec9dfc8e2db157fc46a3263b45520da9a04bf0ab0f3fe28a571fb1b435c3f79",
+      "t": 1778796571,
+      "ty": "sell",
+      "w": "0x720f5f6cc105fc9834c8b7eeb021ce20dce9f55e",
+      "ctr": 0.9,
+      "usd": 0,
+      "s": 0
+    },
     {
       "h": "0x1f5b754d1de2d4d3cbacb5fd200ea2e1e7a23647b86dc1d726e3a8b8bed74205",
       "t": 1778738458,
