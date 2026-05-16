@@ -2,12 +2,12 @@ name: Build Season Snapshot
 
 on:
   schedule:
-    # Every 5 minutes (GitHub may delay during high load)
     - cron: '*/5 * * * *'
   workflow_dispatch:
   push:
     paths:
       - 'scripts/build-snapshot.js'
+      - 'scripts/build-claims.js'
       - '.github/workflows/snapshot.yml'
 
 permissions:
@@ -16,6 +16,9 @@ permissions:
 concurrency:
   group: snapshot
   cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -28,18 +31,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
-      - name: Build snapshot
-        env:
-          CRONOS_API_KEY: ${{ secrets.CRONOS_API_KEY }}
+      - name: Install dependencies
+        run: npm install --no-save ethers @openzeppelin/merkle-tree
+
+      - name: Build snapshot (chain → season.json)
         run: node scripts/build-snapshot.js
+
+      - name: Build claims merkle tree (season.json → claims.json)
+        run: node scripts/build-claims.js
 
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/season.json
+          git add data/season.json data/trades.json data/claims.json
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
