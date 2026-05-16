@@ -111,76 +111,72 @@ async function fetchJson(url, opts = {}, timeoutMs = 30000) {
  * eth_getLogs for each. Two queries per chunk: LP-as-sender (=Buy) and LP-as-receiver (=Sell).
  * Direct from chain — no indexer lag, no third-party dependency.
  */
-async function fetchAllTransfers() {
+/**
+ * Fetch CTR LP transfers from chain.
+ * If fromBlock is given -> incremental (only new blocks since last run).
+ * Otherwise -> cold start from season start or last 7 days.
+ */
+async function fetchTransfers(fromBlockArg = null) {
   const TRANSFER_SIG = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
   const lpPad = '0x' + '0'.repeat(24) + LP.slice(2).toLowerCase();
-  const CHUNK = 2000; // Cronos public RPC limit
-  const FRESH_WINDOW_SEC = 7 * 86400; // Always fetch ≥7 days for live feed (pre/post season)
+  const CHUNK = 2000;
 
-  // Determine fetch range: max(season window, last 7 days)
-  // This means Feed always has data even pre-season; Leaderboard filters to season window later.
-  const now = Math.floor(Date.now() / 1000);
-  const fetchStartTs = Math.min(SS_TS, now - FRESH_WINDOW_SEC);
-  const secondsBack = now - fetchStartTs;
-  const estimatedBlocksBack = Math.ceil(secondsBack / 5); // Cronos: ~5s blocks
-
-  // Estimate season-start block from current block
   const latestHex = await rpcCall('eth_blockNumber', []);
   const latest = parseInt(latestHex, 16);
-  // 10% safety margin so we don't miss anything near the boundary
-  const fromBlock = Math.max(0, latest - Math.ceil(estimatedBlocksBack * 1.1));
-  const toBlock = latest;
-  const totalBlocks = toBlock - fromBlock;
 
-  // Build chunk list
-  const chunks = [];
-  for (let start = fromBlock; start <= toBlock; start += CHUNK) {
-    const end = Math.min(start + CHUNK - 1, toBlock);
-    chunks.push({ start, end });
+  let fromBlock;
+  if (fromBlockArg !== null) {
+    // Incremental: only new blocks since last run (10-block overlap for safety)
+    fromBlock = Math.max(0, fromBlockArg - 10);
+    console.log(`  Incremental: block ${fromBlock} -> ${latest} (${latest - fromBlock} new blocks)`);
+  } else {
+    // Cold start: season start or last 7 days, whichever is earlier
+    const now = Math.floor(Date.now() / 1000);
+    const fetchStartTs = Math.min(SS_TS, now - 7 * 86400);
+    const estimatedBlocksBack = Math.ceil((now - fetchStartTs) / 5);
+    fromBlock = Math.max(0, latest - Math.ceil(estimatedBlocksBack * 1.1));
+    console.log(`  Cold start: from ${new Date(fetchStartTs * 1000).toISOString()}`);
+    console.log(`  Block range: ${fromBlock} -> ${latest} (${latest - fromBlock} blocks)`);
   }
-  console.log(`  Fetch window starts: ${new Date(fetchStartTs * 1000).toISOString()}`);
-  console.log(`  Block range: ${fromBlock} → ${toBlock} (${totalBlocks} blocks, ${chunks.length} chunks of ${CHUNK})`);
-  console.log(`  Querying eth_getLogs in parallel batches...`);
+
+  const chunks = [];
+  for (let start = fromBlock; start <= latest; start += CHUNK) {
+    chunks.push({ start, end: Math.min(start + CHUNK - 1, latest) });
+  }
+  console.log(`  ${chunks.length} chunks of ${CHUNK} to query...`);
 
   const allLogs = [];
-  let chunkDone = 0;
-  let chunkFailed = 0;
-
-  // Process 4 chunks in parallel (one per RPC, roughly)
+  let chunkDone = 0, chunkFailed = 0;
   const PARALLEL = 4;
+
   for (let i = 0; i < chunks.length; i += PARALLEL) {
     const batch = chunks.slice(i, i + PARALLEL);
     const results = await Promise.all(batch.map(async ({ start, end }) => {
-      const fromBlockHex = '0x' + start.toString(16);
-      const toBlockHex   = '0x' + end.toString(16);
+      const fb = '0x' + start.toString(16);
+      const tb = '0x' + end.toString(16);
       try {
         const [fromLogs, toLogs] = await Promise.all([
-          rpcCall('eth_getLogs', [{ address: CTR, fromBlock: fromBlockHex, toBlock: toBlockHex, topics: [TRANSFER_SIG, lpPad, null] }]),
-          rpcCall('eth_getLogs', [{ address: CTR, fromBlock: fromBlockHex, toBlock: toBlockHex, topics: [TRANSFER_SIG, null, lpPad] }])
+          rpcCall('eth_getLogs', [{ address: CTR, fromBlock: fb, toBlock: tb, topics: [TRANSFER_SIG, lpPad, null] }]),
+          rpcCall('eth_getLogs', [{ address: CTR, fromBlock: fb, toBlock: tb, topics: [TRANSFER_SIG, null, lpPad] }])
         ]);
         return [...(fromLogs || []), ...(toLogs || [])];
-      } catch (e) {
-        chunkFailed++;
-        return [];
-      }
+      } catch (e) { chunkFailed++; return []; }
     }));
     results.forEach(logs => allLogs.push(...logs));
     chunkDone += batch.length;
-
     if (chunkDone % 40 === 0 || chunkDone === chunks.length) {
-      const pct = Math.floor((chunkDone / chunks.length) * 100);
-      console.log(`    Progress: ${chunkDone}/${chunks.length} chunks (${pct}%) — ${allLogs.length} logs collected`);
+      console.log(`    Progress: ${chunkDone}/${chunks.length} chunks -- ${allLogs.length} logs`);
     }
     if (i + PARALLEL < chunks.length) await sleep(50);
   }
 
   if (chunkFailed > 0) console.warn(`  WARN: ${chunkFailed} chunks failed`);
-  console.log(`  Collected ${allLogs.length} raw Transfer events from chain`);
-  if (!allLogs.length) return [];
+  console.log(`  Collected ${allLogs.length} raw Transfer events`);
+  if (!allLogs.length) return { transfers: [], latestBlock: latest };
 
-  // Get unique block timestamps (needed because eth_getLogs doesn't include timestamp)
+  // Fetch block timestamps
   const uniqueBlocks = [...new Set(allLogs.map(l => l.blockNumber))];
-  console.log(`  Fetching timestamps for ${uniqueBlocks.length} unique blocks...`);
+  console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
   const blockTimes = {};
   for (let i = 0; i < uniqueBlocks.length; i += 12) {
     const batch = uniqueBlocks.slice(i, i + 12);
@@ -193,26 +189,17 @@ async function fetchAllTransfers() {
     if (i + 12 < uniqueBlocks.length) await sleep(60);
   }
 
-  // Convert logs to standard transfer format and filter to season window
-  const transfers = allLogs.map(log => {
-    const ts = blockTimes[log.blockNumber] || 0;
-    return {
-      hash: log.transactionHash,
-      from: '0x' + log.topics[1].slice(26),
-      to: '0x' + log.topics[2].slice(26),
-      value: BigInt(log.data || '0x0').toString(),
-      timeStamp: ts.toString(),
-      tokenDecimal: String(DEC)
-    };
-  }).filter(t => {
-    const ts = parseInt(t.timeStamp);
-    return ts >= fetchStartTs;  // Keep all from fetch window; season-cut happens in buildTrades
-  });
+  const transfers = allLogs.map(log => ({
+    hash:        log.transactionHash,
+    from:        '0x' + log.topics[1].slice(26),
+    to:          '0x' + log.topics[2].slice(26),
+    value:       BigInt(log.data).toString(),
+    timeStamp:   String(blockTimes[log.blockNumber] || 0),
+    tokenDecimal: String(DEC),
+    blockNumber: log.blockNumber
+  })).filter(t => parseInt(t.timeStamp) > 0);
 
-  // Sort newest first
-  transfers.sort((a, b) => parseInt(b.timeStamp) - parseInt(a.timeStamp));
-  console.log(`  Filtered to ${transfers.length} transfers in season window`);
-  return transfers;
+  return { transfers, latestBlock: latest };
 }
 
 async function fetchPrice() {
@@ -449,37 +436,54 @@ async function main() {
   const market = await fetchPrice();
   console.log(`  Price: $${market.price.toFixed(6)} | 24h: ${market.change24h.toFixed(2)}% | Vol: $${market.volume24h.toFixed(0)} | Liq: $${market.liquidity.toFixed(0)}`);
 
-  console.log('\n[2/6] Fetching transfers directly from Cronos chain via RPC...');
-  const transfers = await fetchAllTransfers();
+  console.log('\n[2/6] Loading existing snapshot + fetching new blocks...');
+  // Load persistent trade store (separate from season.json)
+  const DATA_DIR      = path.join(__dirname, '..', 'data');
+  const TRADES_PATH   = path.join(DATA_DIR, 'trades.json');
+  const SNAPSHOT_PATH = path.join(DATA_DIR, 'season.json');
 
-  if (transfers.length === 0) {
-    console.log('  No transfers in fetch window — continuing with empty snapshot.');
-  } else {
-    // Diagnostic: show newest 3 transfers
-    console.log(`  Newest transfers in dataset:`);
-    transfers.slice(0, 3).forEach(t => {
-      const ago = Math.floor((Date.now()/1000 - parseInt(t.timeStamp)) / 60);
-      console.log(`    ${ago}m ago | hash=${t.hash?.slice(0,16)}... | ${t.from?.slice(0,8)} → ${t.to?.slice(0,8)}`);
-    });
+  let existingTrades = [];
+  let fromBlock = null;
+  try {
+    const raw = fs.readFileSync(TRADES_PATH, 'utf8');
+    const store = JSON.parse(raw);
+    existingTrades = store.trades    || [];
+    fromBlock      = store.lastBlock || null;
+    console.log(`  Loaded ${existingTrades.length} trades from trades.json. lastBlock: ${fromBlock || 'none (cold start)'}`);
+  } catch (e) {
+    console.log('  No trades.json found — cold start.');
   }
 
-  console.log('\n[3/6] Resolving real trader EOAs (tx.from for each tx)...');
+  const { transfers, latestBlock } = await fetchTransfers(fromBlock);
+
+  if (transfers.length === 0 && existingTrades.length === 0) {
+    console.log('  No transfers found at all — writing empty snapshot.');
+  } else if (transfers.length === 0) {
+    console.log(`  No new transfers found — reusing ${existingTrades.length} existing trades.`);
+  }
+
+  console.log('\n[3/6] Resolving real trader EOAs for new transfers...');
   const txFromMap = await resolveRealTraders(transfers);
 
-  console.log('\n[4/6] Building trades...');
-  const trades = buildTrades(transfers, market.price, txFromMap);
+  console.log('\n[4/6] Building and merging trades...');
+  const newTrades = buildTrades(transfers, market.price, txFromMap);
+  // Merge: new trades override existing if same hash (handles re-priced edge cases)
+  const existingByHash = new Map(existingTrades.map(t => [t.h, t]));
+  newTrades.forEach(t => existingByHash.set(t.h, t));
+  // All accumulated trades, sorted newest first
+  const trades = [...existingByHash.values()].sort((a, b) => b.t - a.t);
+
   const seasonTrades = trades.filter(t => t.inSeason);
   const totalBuys  = seasonTrades.filter(t => t.ty === 'buy').length;
   const totalSells = seasonTrades.filter(t => t.ty === 'sell').length;
-  console.log(`  Total: ${trades.length} trades | In-season: ${seasonTrades.length} (${totalBuys} buys, ${totalSells} sells)`);
+  console.log(`  Total accumulated: ${trades.length} trades | In-season: ${seasonTrades.length} (${totalBuys}B / ${totalSells}S) | New this run: ${newTrades.length}`);
 
-  // Diagnostic: show newest 3 trades
+
   if (trades.length > 0) {
-    console.log(`  Newest trades:`);
     trades.slice(0, 3).forEach(t => {
       const ago = Math.floor((Date.now()/1000 - t.t) / 60);
       const tag = t.inSeason ? 'SEASON' : 'extra ';
-      console.log(`    ${ago}m ago | [${tag}] ${t.ty.toUpperCase().padEnd(4)} | ${t.w.slice(0,12)}... | ${t.ctr.toFixed(0)} CTR | $${t.usd.toFixed(2)}`);
+      console.log(`    ${ago}m ago | [${tag}] ${t.ty.toUpperCase().padEnd(4)} | ${t.w.slice(0,12)}... | $${t.usd.toFixed(2)}`);
     });
   }
 
@@ -529,6 +533,18 @@ async function main() {
     refund:  round(j.refund)
   }));
 
+  // Write persistent trade store
+  const tradeStore = {
+    lastBlock: latestBlock,
+    updatedAt: Math.floor(Date.now() / 1000),
+    count:     trades.length,
+    trades     // all accumulated trades for scoring on next run
+  };
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(TRADES_PATH, JSON.stringify(tradeStore));
+  console.log(`  trades.json: ${trades.length} trades, lastBlock: ${latestBlock}`);
+
+  // Write compact frontend snapshot (no raw trades — frontend only needs feed + wallets)
   const snapshot = {
     updatedAt:   Math.floor(Date.now() / 1000),
     seasonStart: SS_TS,
@@ -557,10 +573,8 @@ async function main() {
     jackpots: recentJackpots
   };
 
-  // Write
-  const outDir  = path.join(__dirname, '..', 'data');
-  const outPath = path.join(outDir, 'season.json');
-  fs.mkdirSync(outDir, { recursive: true });
+  // Write season.json
+  const outPath = SNAPSHOT_PATH;
   fs.writeFileSync(outPath, JSON.stringify(snapshot, null, 2));
 
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
