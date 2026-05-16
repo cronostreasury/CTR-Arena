@@ -39,14 +39,11 @@ jobs:
       - name: Build snapshot (chain → season.json)
         run: node scripts/build-snapshot.js
 
-      - name: Build claims merkle tree (season.json → claims.json)
-        run: node scripts/build-claims.js
-
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/season.json data/trades.json data/claims.json
+          git add data/season.json data/trades.json
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
