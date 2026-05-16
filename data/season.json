@@ -1,43 +1,29 @@
 {
-  "updatedAt": 1778906507,
+  "updatedAt": 1778915001,
   "seasonStart": 1778803200,
   "seasonEnd": 1781395200,
   "seasonDays": 30,
   "market": {
     "price": 0.00007264,
-    "change24h": -11.69,
-    "volume24h": 457.3,
+    "change24h": -3.6,
+    "volume24h": 445.9,
     "liquidity": 18516.46,
-    "buys24h": 4,
+    "buys24h": 3,
     "sells24h": 3
   },
   "stats": {
-    "totalTrades": 8,
-    "totalBuys": 6,
-    "totalSells": 2,
-    "totalWallets": 5,
-    "totalBuyVolume": 14.65,
-    "totalSellVolume": 223.59,
+    "totalTrades": 1,
+    "totalBuys": 0,
+    "totalSells": 1,
+    "totalWallets": 1,
+    "totalBuyVolume": 0,
+    "totalSellVolume": 29.42,
     "prizePool": 0,
     "jackpotsHit": 0
   },
   "wallets": {
-    "0x5237454dac7d259dd88b34ceb17e195dca0a3f4d": {
-      "rank": 1,
-      "fs": 12.56,
-      "bV": 4.15,
-      "sV": 0,
-      "bC": 57075.5727,
-      "sC": 0,
-      "balC": 11339812.0416,
-      "aw": 1,
-      "hb": 1.0098,
-      "n": 2,
-      "ft": 1778855961,
-      "lt": 1778855961
-    },
     "0xa542b8ca57781d4495dce5d71704bb0d4301123f": {
-      "rank": 2,
+      "rank": 1,
       "fs": 0,
       "bV": 0,
       "sV": 29.42,
@@ -45,52 +31,10 @@
       "sC": 405000,
       "balC": 0,
       "aw": 0,
-      "hb": 1.0078,
+      "hb": 1.0094,
       "n": 1,
       "ft": 1778866210,
       "lt": 1778866210
-    },
-    "0x889758b37ed75953cadf00dc6f56781c8367ca41": {
-      "rank": 3,
-      "fs": 0,
-      "bV": 9.39,
-      "sV": 0,
-      "bC": 129328.8757,
-      "sC": 0,
-      "balC": 0,
-      "aw": 0,
-      "hb": 1.0099,
-      "n": 2,
-      "ft": 1778854929,
-      "lt": 1778854929
-    },
-    "0x64d3f9410d7d3d760f2d506fbf557e257aa0277f": {
-      "rank": 4,
-      "fs": 0,
-      "bV": 1.11,
-      "sV": 0,
-      "bC": 15330.7924,
-      "sC": 0,
-      "balC": 0,
-      "aw": 0,
-      "hb": 1.01,
-      "n": 2,
-      "ft": 1778854753,
-      "lt": 1778854753
-    },
-    "0x75f05df49358efac50d68955d8d888f73fe8d13a": {
-      "rank": 5,
-      "fs": 0,
-      "bV": 0,
-      "sV": 194.17,
-      "bC": 0,
-      "sC": 2673000,
-      "balC": 40000000.326,
-      "aw": 0,
-      "hb": 1.01,
-      "n": 1,
-      "ft": 1778854750,
-      "lt": 1778854750
     }
   },
   "trades": [
@@ -101,69 +45,6 @@
       "w": "0xa542b8ca57781d4495dce5d71704bb0d4301123f",
       "ctr": 405000,
       "usd": 29.42,
-      "s": 1
-    },
-    {
-      "h": "0x5b9c4afda6356f02ee97a0eac405b18866b5e94e77c6ec05301b88409b5b1724",
-      "t": 1778855961,
-      "ty": "buy",
-      "w": "0x5237454dac7d259dd88b34ceb17e195dca0a3f4d",
-      "ctr": 5707.56,
-      "usd": 0.41,
-      "s": 1
-    },
-    {
-      "h": "0x5b9c4afda6356f02ee97a0eac405b18866b5e94e77c6ec05301b88409b5b1724",
-      "t": 1778855961,
-      "ty": "buy",
-      "w": "0x5237454dac7d259dd88b34ceb17e195dca0a3f4d",
-      "ctr": 51368.02,
-      "usd": 3.73,
-      "s": 1
-    },
-    {
-      "h": "0x70ee3dad3bba169a271c18ebb90c56ce7a2fb59193f101ef4006d383aeb9d8a1",
-      "t": 1778854929,
-      "ty": "buy",
-      "w": "0x889758b37ed75953cadf00dc6f56781c8367ca41",
-      "ctr": 12932.89,
-      "usd": 0.94,
-      "s": 1
-    },
-    {
-      "h": "0x70ee3dad3bba169a271c18ebb90c56ce7a2fb59193f101ef4006d383aeb9d8a1",
-      "t": 1778854929,
-      "ty": "buy",
-      "w": "0x889758b37ed75953cadf00dc6f56781c8367ca41",
-      "ctr": 116395.99,
-      "usd": 8.46,
-      "s": 1
-    },
-    {
-      "h": "0xa151c5ccc65df4a38f408b23bbacadbef849dd43cdc122eabd603d883e305b0e",
-      "t": 1778854753,
-      "ty": "buy",
-      "w": "0x64d3f9410d7d3d760f2d506fbf557e257aa0277f",
-      "ctr": 1533.08,
-      "usd": 0.11,
-      "s": 1
-    },
-    {
-      "h": "0xa151c5ccc65df4a38f408b23bbacadbef849dd43cdc122eabd603d883e305b0e",
-      "t": 1778854753,
-      "ty": "buy",
-      "w": "0x64d3f9410d7d3d760f2d506fbf557e257aa0277f",
-      "ctr": 13797.71,
-      "usd": 1,
-      "s": 1
-    },
-    {
-      "h": "0x380d333cebb24201657e497274a8d0afcc5db1f128e0d28f7c477c57a8897425",
-      "t": 1778854750,
-      "ty": "sell",
-      "w": "0x75f05df49358efac50d68955d8d888f73fe8d13a",
-      "ctr": 2673000,
-      "usd": 194.17,
       "s": 1
     }
   ],
