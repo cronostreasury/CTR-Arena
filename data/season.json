@@ -1,22 +1,22 @@
 {
-  "updatedAt": 1779017563,
+  "updatedAt": 1779021428,
   "seasonStart": 1778803200,
   "seasonEnd": 1781395200,
   "seasonDays": 30,
   "market": {
-    "price": 0.0000707,
-    "change24h": -0.05,
-    "volume24h": 2.55,
-    "liquidity": 18016.74,
-    "buys24h": 2,
+    "price": 0.00007099,
+    "change24h": 0.37,
+    "volume24h": 3.6,
+    "liquidity": 18088.67,
+    "buys24h": 3,
     "sells24h": 0
   },
   "stats": {
-    "totalTrades": 3,
-    "totalBuys": 2,
+    "totalTrades": 4,
+    "totalBuys": 3,
     "totalSells": 1,
     "totalWallets": 3,
-    "totalBuyVolume": 2.29,
+    "totalBuyVolume": 3.23,
     "totalSellVolume": 29.42,
     "prizePool": 0,
     "jackpotsHit": 0
@@ -24,28 +24,28 @@
   "wallets": {
     "0x05f6cef254ed90c2f1e51120aa8a48e2547f74f4": {
       "rank": 1,
-      "fs": 5.01,
-      "bV": 1.65,
+      "fs": 7.88,
+      "bV": 2.59,
       "sV": 0,
-      "bC": 23314.1459,
+      "bC": 36616.2591,
       "sC": 0,
-      "balC": 35482288.2827,
+      "balC": 35494202.0141,
       "aw": 1,
-      "hb": 1.012,
-      "n": 1,
+      "hb": 1.0127,
+      "n": 2,
       "ft": 1778955383,
-      "lt": 1778955383
+      "lt": 1779020862
     },
     "0x34ba7dcc4691b80be3cca15cc532b03d51de51d6": {
       "rank": 2,
-      "fs": 1.92,
+      "fs": 1.93,
       "bV": 0.64,
       "sV": 0,
       "bC": 9060.9051,
       "sC": 0,
       "balC": 287488.8393,
       "aw": 1,
-      "hb": 1.0013,
+      "hb": 1.002,
       "n": 1,
       "ft": 1779011023,
       "lt": 1779011023
@@ -59,13 +59,22 @@
       "sC": 405000,
       "balC": 0,
       "aw": 0,
-      "hb": 1.0292,
+      "hb": 1.0299,
       "n": 1,
       "ft": 1778866210,
       "lt": 1778866210
     }
   },
   "trades": [
+    {
+      "h": "0x0fa514591e0a99edc16201bdef9deeee88b05f5fc1c6c316d739706231f230cf",
+      "t": 1779020862,
+      "ty": "buy",
+      "w": "0x05f6cef254ed90c2f1e51120aa8a48e2547f74f4",
+      "ctr": 13302.11,
+      "usd": 0.94,
+      "s": 1
+    },
     {
       "h": "0x1ba9ea381d69aa866b4211d92f77b03af5a916956c5700625db8436e4cbc6675",
       "t": 1779011023,
