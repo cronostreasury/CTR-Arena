@@ -438,8 +438,8 @@ async function main() {
   console.log('\n[2/6] Loading existing snapshot + fetching new blocks...');
   // Load persistent trade store (separate from season.json)
   const DATA_DIR      = path.join(__dirname, '..', 'data');
-  const TRADES_PATH   = path.join(DATA_DIR, 'trades.json');
-  const SNAPSHOT_PATH = path.join(DATA_DIR, 'season.json');
+  const TRADES_PATH   = path.join(DATA_DIR, 'trades-crab.json');
+  const SNAPSHOT_PATH = path.join(DATA_DIR, 'season-crab.json');
 
   let existingTrades = [];
   let fromBlock = null;
