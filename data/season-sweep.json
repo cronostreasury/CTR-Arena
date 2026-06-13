@@ -1,0 +1,27 @@
+{
+  "updatedAt": 0,
+  "seasonStart": 1778803200,
+  "seasonEnd": 1781395200,
+  "seasonDays": 30,
+  "market": {
+    "price": 0,
+    "change24h": 0,
+    "volume24h": 0,
+    "liquidity": 0,
+    "buys24h": 0,
+    "sells24h": 0
+  },
+  "stats": {
+    "totalTrades": 0,
+    "totalBuys": 0,
+    "totalSells": 0,
+    "totalWallets": 0,
+    "totalBuyVolume": 0,
+    "totalSellVolume": 0,
+    "prizePool": 0,
+    "jackpotsHit": 0
+  },
+  "wallets": {},
+  "trades": [],
+  "jackpots": []
+}
