@@ -1,0 +1,42 @@
+name: Build SWEEP Season Snapshot
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot-sweep
+  cancel-in-progress: false
+
+jobs:
+  build-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run snapshot builder
+        run: node scripts/build-snapshot-sweep.js
+
+      - name: Commit and push updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/season-sweep.json data/trades-sweep.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update SWEEP season snapshot [skip ci]"
+            git push
+          fi
