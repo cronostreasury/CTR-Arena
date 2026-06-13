@@ -400,14 +400,14 @@ if(d<100){cx.beginPath();cx.moveTo(pts[i].x,pts[i].y);cx.lineTo(pts[j].x,pts[j].
 requestAnimationFrame(anim)}anim();
 
 // === CONSTANTS ===
-const CTR='0x8F93de1d32e732Ec37Dc93A373bf8C4aE48392f8';
+const SWEEP='0x8F93de1d32e732Ec37Dc93A373bf8C4aE48392f8';
 const LP='0x7BFcCe870e7651e577B750F9116E2E8ebC647910';
 const PRIZE_WALLET='0x32bA7097fC2ce5b1A118Bf3347b492e414cB7C35';
 const EXP='https://explorer.cronos.org';
 const SD=30;
 const SS=new Date('2026-05-15T00:00:00Z'),SE=new Date(SS.getTime()+SD*864e5);
 const SS_TS=SS.getTime()/1e3;
-const SNAPSHOT_URL='data/season.json';
+const SNAPSHOT_URL='data/season-sweep.json';
 
 let price=0,trades=[],tm={},lb=[],jackpots=[];
 
