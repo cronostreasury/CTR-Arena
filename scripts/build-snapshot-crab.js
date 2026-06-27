@@ -201,23 +201,50 @@ async function fetchTransfers(fromBlockArg = null) {
   return { transfers, latestBlock: latest };
 }
 
+function extractPairData(p) {
+  return {
+    price:      parseFloat(p.priceUsd) || 0,
+    change24h:  parseFloat(p.priceChange?.h24) || 0,
+    volume24h:  p.volume?.h24 || 0,
+    liquidity:  p.liquidity?.usd || 0,
+    buys24h:    p.txns?.h24?.buys || 0,
+    sells24h:   p.txns?.h24?.sells || 0
+  };
+}
+
+const EMPTY_MARKET = { price: 0, change24h: 0, volume24h: 0, liquidity: 0, buys24h: 0, sells24h: 0 };
+
 async function fetchPrice() {
+  // 1. Try pair endpoint by LP address
   try {
     const d = await fetchJson(`https://api.dexscreener.com/latest/dex/pairs/cronos/${LP}`);
     const p = d.pair || d.pairs?.[0];
-    if (!p) return { price: 0, change24h: 0, volume24h: 0, liquidity: 0, buys24h: 0, sells24h: 0 };
-    return {
-      price:      parseFloat(p.priceUsd) || 0,
-      change24h:  parseFloat(p.priceChange?.h24) || 0,
-      volume24h:  p.volume?.h24 || 0,
-      liquidity:  p.liquidity?.usd || 0,
-      buys24h:    p.txns?.h24?.buys || 0,
-      sells24h:   p.txns?.h24?.sells || 0
-    };
+    if (p && (parseFloat(p.priceUsd) > 0 || (p.liquidity?.usd || 0) > 0)) {
+      console.log('  DexScreener: pair endpoint OK');
+      return extractPairData(p);
+    }
+    console.log('  DexScreener: pair endpoint returned no data, trying token endpoint...');
   } catch (e) {
-    console.error('  DexScreener failed:', e.message);
-    return { price: 0, change24h: 0, volume24h: 0, liquidity: 0, buys24h: 0, sells24h: 0 };
+    console.log(`  DexScreener pair endpoint failed (${e.message}), trying token endpoint...`);
   }
+
+  // 2. Fallback: token endpoint (returns all pairs for the CRAB token)
+  try {
+    const d2 = await fetchJson(`https://api.dexscreener.com/latest/dex/tokens/${CRAB}`);
+    const pairs = d2.pairs || [];
+    // Prefer the exact LP we track; otherwise take the most-liquid Cronos pair
+    const p2 = pairs.find(p => p.chainId === 'cronos' && p.pairAddress?.toLowerCase() === LP.toLowerCase())
+             || pairs.filter(p => p.chainId === 'cronos').sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];
+    if (p2) {
+      console.log(`  DexScreener: token endpoint OK (pair ${p2.pairAddress})`);
+      return extractPairData(p2);
+    }
+    console.log('  DexScreener: token endpoint returned no pairs for CRAB on Cronos');
+  } catch (e) {
+    console.error('  DexScreener token endpoint failed:', e.message);
+  }
+
+  return EMPTY_MARKET;
 }
 
 let rpcIdx = 0;
@@ -469,6 +496,19 @@ async function main() {
   // Merge: new trades override existing if same hash (handles re-priced edge cases)
   const existingByHash = new Map(existingTrades.map(t => [t.h, t]));
   newTrades.forEach(t => existingByHash.set(t.h, t));
+
+  // Re-price any accumulated trades that had usd=0 (price was unavailable when first fetched)
+  if (market.price > 0) {
+    let repriced = 0;
+    for (const [hash, trade] of existingByHash) {
+      if (trade.usd === 0 && trade.ctr > 0) {
+        existingByHash.set(hash, { ...trade, usd: trade.ctr * market.price });
+        repriced++;
+      }
+    }
+    if (repriced > 0) console.log(`  Re-priced ${repriced} trades that had usd=0`);
+  }
+
   // All accumulated trades, sorted newest first
   const trades = [...existingByHash.values()].sort((a, b) => b.t - a.t);
 
