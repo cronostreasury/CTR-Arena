@@ -20,7 +20,7 @@ const path = require('path');
 const API_KEY = process.env.CRONOS_API_KEY || '';
 
 const CRAB        = '0xC84398E9BBBC028BA81e61D2c45194049D0173Ef';
-const LP           = '0xDf9030e28cde0F4E6f11c65362C5e152093C7414';
+const LP           = '0xfd707E32b046B04b05779b1B971ee2d9457C1163';
 
 const DEC          = 18;
 const SD           = 30;        // Season duration in days
