@@ -1,18 +1,18 @@
 {
-  "updatedAt": 1782582570,
+  "updatedAt": 1782587049,
   "seasonStart": 1782864000,
   "seasonEnd": 1785456000,
   "seasonDays": 30,
   "market": {
-    "price": 1.189e-10,
+    "price": 1.201e-10,
     "change24h": 0,
-    "volume24h": 0.54,
-    "liquidity": 3855.3,
-    "buys24h": 1,
-    "sells24h": 0
+    "volume24h": 0.88,
+    "liquidity": 4008.86,
+    "buys24h": 0,
+    "sells24h": 1
   },
   "stats": {
-    "totalTrades": 0,
+    "totalTrades": 1,
     "totalBuys": 0,
     "totalSells": 0,
     "totalWallets": 0,
@@ -22,6 +22,16 @@
     "jackpotsHit": 0
   },
   "wallets": {},
-  "trades": [],
+  "trades": [
+    {
+      "h": "0x7019bd1695081540eee095756d33161a0c1f7edfbb8b118b63b6b2d4983d6aa3",
+      "t": 1782583008,
+      "ty": "sell",
+      "w": "0x2ed116471de62377e69a76f12e063711db92b7e3",
+      "ctr": 7381334739.24,
+      "usd": 0.89,
+      "s": 0
+    }
+  ],
   "jackpots": []
 }
