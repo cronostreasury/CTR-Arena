@@ -204,7 +204,7 @@ async function fetchTransfers(fromBlockArg = null) {
 async function fetchPrice() {
   try {
     const d = await fetchJson(`https://api.dexscreener.com/latest/dex/pairs/cronos/${LP}`);
-    const p = d.pair;
+    const p = d.pair || d.pairs?.[0];
     if (!p) return { price: 0, change24h: 0, volume24h: 0, liquidity: 0, buys24h: 0, sells24h: 0 };
     return {
       price:      parseFloat(p.priceUsd) || 0,
