@@ -38,5 +38,11 @@ jobs:
             echo "No changes to commit."
           else
             git commit -m "Update CRAB season snapshot [skip ci]"
-            git push
+            # Another snapshot workflow may have pushed meanwhile — rebase and retry
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin "$GITHUB_REF_NAME"
+              if git push; then exit 0; fi
+              sleep $((i * 2))
+            done
+            exit 1
           fi

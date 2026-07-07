@@ -26,7 +26,7 @@ const DEC          = 18;
 const SD           = 30;        // Season duration in days
 const TAX_RATE     = 0.10;
 const JACKPOT_MIN_BUY = 10;     // USD
-const SS           = new Date('2026-05-15T00:00:00Z');
+const SS           = new Date('2026-07-01T00:00:00Z');
 const SS_TS        = Math.floor(SS.getTime() / 1000);
 const SE           = new Date(SS.getTime() + SD * 86400 * 1000); // Season end
 const SE_TS        = Math.floor(SE.getTime() / 1000);
@@ -471,6 +471,10 @@ async function main() {
   newTrades.forEach(t => existingByHash.set(t.h, t));
   // All accumulated trades, sorted newest first
   const trades = [...existingByHash.values()].sort((a, b) => b.t - a.t);
+
+  // Recompute inSeason from timestamps every run — persisted flags go stale
+  // when the season window changes, so never trust the stored value.
+  trades.forEach(t => { t.inSeason = t.t >= SS_TS && t.t < SE_TS; });
 
   const seasonTrades = trades.filter(t => t.inSeason);
   const totalBuys  = seasonTrades.filter(t => t.ty === 'buy').length;
