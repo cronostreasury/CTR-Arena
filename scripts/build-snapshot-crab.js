@@ -512,6 +512,10 @@ async function main() {
   // All accumulated trades, sorted newest first
   const trades = [...existingByHash.values()].sort((a, b) => b.t - a.t);
 
+  // Recompute inSeason from timestamps every run — persisted flags go stale
+  // when the season window changes, so never trust the stored value.
+  trades.forEach(t => { t.inSeason = t.t >= SS_TS && t.t < SE_TS; });
+
   const seasonTrades = trades.filter(t => t.inSeason);
   const totalBuys  = seasonTrades.filter(t => t.ty === 'buy').length;
   const totalSells = seasonTrades.filter(t => t.ty === 'sell').length;
