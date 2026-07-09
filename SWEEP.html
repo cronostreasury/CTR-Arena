@@ -526,7 +526,7 @@ function renderLB(){
 
 function updCounts(stats){
   $('sTraders').textContent=stats?stats.totalWallets:Object.keys(tm).length;$('sTraders').classList.remove('ld');
-  const tot=stats?stats.totalTrades:Object.values(tm).reduce((s,t)=>s+t.n,0);
+  const tot=stats?(stats.totalBuys+stats.totalSells):Object.values(tm).reduce((s,t)=>s+t.n,0);
   $('sTrades').textContent=fN(tot);$('sTrades').classList.remove('ld');
 }
 
