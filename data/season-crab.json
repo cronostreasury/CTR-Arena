@@ -1,5 +1,5 @@
 {
-  "updatedAt": 1783620063,
+  "updatedAt": 1783623819,
   "seasonStart": 1783641600,
   "seasonEnd": 1786233600,
   "seasonDays": 30,
@@ -12,7 +12,7 @@
     "sells24h": 1
   },
   "stats": {
-    "totalTrades": 0,
+    "totalTrades": 3,
     "totalBuys": 0,
     "totalSells": 0,
     "totalWallets": 0,
@@ -22,6 +22,34 @@
     "jackpotsHit": 0
   },
   "wallets": {},
-  "trades": [],
+  "trades": [
+    {
+      "h": "0xc5fea5ab605b1253af3d27f72419423fc98038fa31b73318461e1a5539777664",
+      "t": 1783605060,
+      "ty": "sell",
+      "w": "0x03e2f1679ad333f601df9717b03fc2a8d782f2a2",
+      "ctr": 70118615407.21,
+      "usd": 4.95,
+      "s": 0
+    },
+    {
+      "h": "0x3ece5bc540e8a0deebaa8a767858a16263875fef2e9064a81ec60550f178a32c",
+      "t": 1783605059,
+      "ty": "buy",
+      "w": "0x98d78881eb256e4110c35c5b7f5455419678b509",
+      "ctr": 257167832021.82,
+      "usd": 18.14,
+      "s": 0
+    },
+    {
+      "h": "0x7df3d23550ee91e84e30b06d387538c75a18e95890cb9a6c0ddc7db2a06e290e",
+      "t": 1783571039,
+      "ty": "buy",
+      "w": "0x0aa313f2d49292cb2597d3cb719344f950dc37ef",
+      "ctr": 102489036367.13,
+      "usd": 7.23,
+      "s": 0
+    }
+  ],
   "jackpots": []
 }
