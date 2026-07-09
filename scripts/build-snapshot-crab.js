@@ -20,7 +20,7 @@ const path = require('path');
 const API_KEY = process.env.CRONOS_API_KEY || '';
 
 const CRAB        = '0xC84398E9BBBC028BA81e61D2c45194049D0173Ef';
-const LP           = '0xfd707E32b046B04b05779b1B971ee2d9457C1163';
+const LP           = '0xcCcCcCcCdbEC186DC426F8B5628AF94737dF0E60';
 
 const DEC          = 18;
 const SD           = 30;        // Season duration in days
@@ -473,9 +473,15 @@ async function main() {
   try {
     const raw = fs.readFileSync(TRADES_PATH, 'utf8');
     const store = JSON.parse(raw);
-    existingTrades = store.trades    || [];
-    fromBlock      = store.lastBlock || null;
-    console.log(`  Loaded ${existingTrades.length} trades from trades.json. lastBlock: ${fromBlock || 'none (cold start)'}`);
+    if ((store.lp || '') !== LP.toLowerCase()) {
+      // Pool address changed — stored trades belong to the old pool.
+      // Discard everything and cold-start against the new pool.
+      console.log(`  Pool changed (store: ${store.lp || 'unset'} -> ${LP.toLowerCase()}) — discarding stored trades, cold start.`);
+    } else {
+      existingTrades = store.trades    || [];
+      fromBlock      = store.lastBlock || null;
+      console.log(`  Loaded ${existingTrades.length} trades from trades.json. lastBlock: ${fromBlock || 'none (cold start)'}`);
+    }
   } catch (e) {
     console.log('  No trades.json found — cold start.');
   }
@@ -578,6 +584,7 @@ async function main() {
 
   // Write persistent trade store
   const tradeStore = {
+    lp:        LP.toLowerCase(),
     lastBlock: latestBlock,
     updatedAt: Math.floor(Date.now() / 1000),
     count:     trades.length,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CRAB Trading Season | Crow With Knife</title>
+<title>CRAB Trading Season | Crab With Knife</title>
 <link rel="icon" type="image/svg+xml" href="cwk-logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -383,7 +383,7 @@ Final Score = Raw Points x Anti-Wash x Holding Bonus</span></div>
     </div>
   </section>
 
-  <footer><div class="fti"><div class="ftl">CRAB · Season 1<span class="ftc">Contract: 0xC84398E9BBBC028BA81e61D2c45194049D0173Ef</span></div><div class="ftlk"><a href="#" target="_blank">Main Site</a><a href="https://dexscreener.com/cronos/0xfd707E32b046B04b05779b1B971ee2d9457C1163" target="_blank">DexScreener</a><a href="#" target="_blank">Governance</a></div></div><div class="ftsrc">Data from <strong>Cronos Explorer API</strong> &amp; <strong>DexScreener</strong> · Auto-refresh 30s</div></footer>
+  <footer><div class="fti"><div class="ftl">CRAB · Season 1<span class="ftc">Contract: 0xC84398E9BBBC028BA81e61D2c45194049D0173Ef</span></div><div class="ftlk"><a href="#" target="_blank">Main Site</a><a href="https://dexscreener.com/cronos/0xcCcCcCcCdbEC186DC426F8B5628AF94737dF0E60" target="_blank">DexScreener</a><a href="#" target="_blank">Governance</a></div></div><div class="ftsrc">Data from <strong>Cronos Explorer API</strong> &amp; <strong>DexScreener</strong> · Auto-refresh 30s</div></footer>
 </div>
 
 <script>
@@ -401,7 +401,7 @@ requestAnimationFrame(anim)}anim();
 
 // === CONSTANTS ===
 const CRAB='0xC84398E9BBBC028BA81e61D2c45194049D0173Ef';
-const LP='0xfd707E32b046B04b05779b1B971ee2d9457C1163';
+const LP='0xcCcCcCcCdbEC186DC426F8B5628AF94737dF0E60';
 const PRIZE_WALLET='0x32bA7097fC2ce5b1A118Bf3347b492e414cB7C35';
 const EXP='https://explorer.cronos.org';
 const SD=30;
@@ -585,7 +585,7 @@ function updCD(){
 
 function updTicker(p,ch,vol,liq,buys,sells){
   const cc=ch>=0?'var(--green)':'var(--red)';
-  const items=[{l:'CRAB',v:'$'+p.toFixed(6),c:'var(--gold)'},{l:'24h',v:(ch>=0?'+':'')+ch.toFixed(2)+'%',c:cc},{l:'Vol',v:fU(vol),c:'var(--text)'},{l:'Liq',v:fU(liq),c:'var(--text)'},{l:'Buys',v:String(buys),c:'var(--green)'},{l:'Sells',v:String(sells),c:'var(--red)'},{l:'Pair',v:'CRAB/WCRO',c:'var(--accent)'}];
+  const items=[{l:'CRAB',v:'$'+p.toFixed(6),c:'var(--gold)'},{l:'24h',v:(ch>=0?'+':'')+ch.toFixed(2)+'%',c:cc},{l:'Vol',v:fU(vol),c:'var(--text)'},{l:'Liq',v:fU(liq),c:'var(--text)'},{l:'Buys',v:String(buys),c:'var(--green)'},{l:'Sells',v:String(sells),c:'var(--red)'},{l:'Pair',v:'CRAB/CAW',c:'var(--accent)'}];
   $('ticker').innerHTML=[...items,...items].map((it,i)=>(i?'<div class="tsep"></div>':'')+'<div class="ti"><span class="tl">'+it.l+'</span><span class="tv" style="color:'+it.c+'">'+it.v+'</span></div>').join('');
 }
 
