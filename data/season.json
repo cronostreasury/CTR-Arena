@@ -1,18 +1,18 @@
 {
-  "updatedAt": 1784224757,
+  "updatedAt": 1784229199,
   "seasonStart": 1778803200,
   "seasonEnd": 1781395200,
   "seasonDays": 30,
   "market": {
-    "price": 0,
+    "price": 0.00001959,
     "change24h": 0,
-    "volume24h": 0,
-    "liquidity": 0,
-    "buys24h": 0,
+    "volume24h": 60.87,
+    "liquidity": 8782.92,
+    "buys24h": 1,
     "sells24h": 0
   },
   "stats": {
-    "totalTrades": 250,
+    "totalTrades": 251,
     "totalBuys": 82,
     "totalSells": 51,
     "totalWallets": 55,
@@ -794,6 +794,15 @@
     }
   },
   "trades": [
+    {
+      "h": "0x272b38b896388069a17fb7c14ce7706580d36c2163eba2651e5409c5b7287681",
+      "t": 1784226056,
+      "ty": "buy",
+      "w": "0x3ec642811a3c992e563ddac367cb5603e4cfd6de",
+      "ctr": 2826822.3,
+      "usd": 55.38,
+      "s": 0
+    },
     {
       "h": "0xdd69b3aaa5e76211ac1037c0eb80661df9b7456b7e174073e3f91a6eb69281fc",
       "t": 1784134113,
@@ -1683,15 +1692,6 @@
       "w": "0x9cc66b138ba1505f0e50b60adde224ced2044070",
       "ctr": 17968.46,
       "usd": 0.47,
-      "s": 0
-    },
-    {
-      "h": "0x629a42c2cf1af347c9498a86cf3c27d00162592f3becaf5a85513063a30cef74",
-      "t": 1781628451,
-      "ty": "buy",
-      "w": "0xe67ccf93624aabaf06c1a17a7bfedf3faf8120dc",
-      "ctr": 14538.1,
-      "usd": 0.38,
       "s": 0
     }
   ],
