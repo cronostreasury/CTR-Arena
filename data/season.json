@@ -1,18 +1,18 @@
 {
-  "updatedAt": 1784247037,
+  "updatedAt": 1784259237,
   "seasonStart": 1778803200,
   "seasonEnd": 1781395200,
   "seasonDays": 30,
   "market": {
-    "price": 0.0000191,
-    "change24h": -2.48,
-    "volume24h": 79.49,
-    "liquidity": 8602.57,
-    "buys24h": 1,
-    "sells24h": 1
+    "price": 0.00001811,
+    "change24h": -7.56,
+    "volume24h": 238.23,
+    "liquidity": 8460.42,
+    "buys24h": 2,
+    "sells24h": 2
   },
   "stats": {
-    "totalTrades": 251,
+    "totalTrades": 253,
     "totalBuys": 82,
     "totalSells": 51,
     "totalWallets": 55,
@@ -379,7 +379,7 @@
       "sV": 89.54,
       "bC": 421634.1145,
       "sC": 2745000,
-      "balC": 10000000,
+      "balC": 0,
       "aw": 0,
       "hb": 1.5,
       "n": 4,
@@ -794,6 +794,24 @@
     }
   },
   "trades": [
+    {
+      "h": "0x9c326ebdcf188b3362f3e74f856e32579c8e27e6dbf5da236130e8871c785f99",
+      "t": 1784250744,
+      "ty": "buy",
+      "w": "0x2ed116471de62377e69a76f12e063711db92b7e3",
+      "ctr": 11560.18,
+      "usd": 0.21,
+      "s": 0
+    },
+    {
+      "h": "0x950874a38df8cd080b95fd3b0d267a739ede6f4c3d825ef5f9a36feaad4cdf97",
+      "t": 1784250741,
+      "ty": "sell",
+      "w": "0x7614a361217fcfe9a7f5cb8d950b40514d7b45aa",
+      "ctr": 8460000,
+      "usd": 153.21,
+      "s": 0
+    },
     {
       "h": "0x272b38b896388069a17fb7c14ce7706580d36c2163eba2651e5409c5b7287681",
       "t": 1784226056,
@@ -1674,24 +1692,6 @@
       "w": "0x78f12d0d41e72a52c13c1940590387d0c7c52ee8",
       "ctr": 387774.85,
       "usd": 10.21,
-      "s": 0
-    },
-    {
-      "h": "0xdc6d7601abc3aa3fe8e104d3a69387cdc620060ccdedec94505983b923f9711d",
-      "t": 1781710996,
-      "ty": "buy",
-      "w": "0x9d8f68d4093c754bc06d990ec66d0045bd0465c7",
-      "ctr": 17606.79,
-      "usd": 0.46,
-      "s": 0
-    },
-    {
-      "h": "0x879aac5824d0c2033edc261caa8bfcb5b9f821684c5f720ae652ba9fd3c92f37",
-      "t": 1781661506,
-      "ty": "buy",
-      "w": "0x9cc66b138ba1505f0e50b60adde224ced2044070",
-      "ctr": 17968.46,
-      "usd": 0.47,
       "s": 0
     }
   ],
