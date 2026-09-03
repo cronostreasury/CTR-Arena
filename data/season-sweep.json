@@ -1,18 +1,18 @@
 {
-  "updatedAt": 1788472516,
+  "updatedAt": 1788478947,
   "seasonStart": 1782864000,
   "seasonEnd": 1785456000,
   "seasonDays": 30,
   "market": {
-    "price": 0.00001479,
-    "change24h": 4.77,
-    "volume24h": 0.14,
-    "liquidity": 3435.07,
-    "buys24h": 1,
+    "price": 0.00001505,
+    "change24h": 6.68,
+    "volume24h": 23.33,
+    "liquidity": 3450.68,
+    "buys24h": 3,
     "sells24h": 2
   },
   "stats": {
-    "totalTrades": 1152,
+    "totalTrades": 1154,
     "totalBuys": 406,
     "totalSells": 183,
     "totalWallets": 62,
@@ -24,13 +24,13 @@
   "wallets": {
     "0x2bce55b5f8877abc571dfee10b8a62adbf3a3b49": {
       "rank": 1,
-      "fs": 1102.53,
+      "fs": 1163.18,
       "bV": 526.04,
       "sV": 230.59,
       "bC": 35045262.6873,
       "sC": 18718176.2851,
-      "balC": 25356723.4742,
-      "aw": 0.4064,
+      "balC": 26751585.776,
+      "aw": 0.4287,
       "hb": 1.5,
       "n": 138,
       "ft": 1782945644,
@@ -141,7 +141,7 @@
       "sV": 715.56,
       "bC": 0,
       "sC": 42046111.3212,
-      "balC": 102249.3487,
+      "balC": 257982.998,
       "aw": 0,
       "hb": 1.5,
       "n": 78,
@@ -883,7 +883,7 @@
       "sV": 18.23,
       "bC": 0,
       "sC": 1052162.8857,
-      "balC": 0,
+      "balC": 6740.5417,
       "aw": 0,
       "hb": 1.5,
       "n": 1,
@@ -892,6 +892,24 @@
     }
   },
   "trades": [
+    {
+      "h": "0xcadfa4ff0f96908a4301ab39593e41636b0251a12ba7f93cb2d683dd343c6971",
+      "t": 1788478620,
+      "ty": "buy",
+      "w": "0x2bce55b5f8877abc571dfee10b8a62adbf3a3b49",
+      "ctr": 673150.48,
+      "usd": 10.13,
+      "s": 0
+    },
+    {
+      "h": "0xe9ad64f9d0710183c900d88c88c4e44ac79b485caab6059036a15d962e70dffc",
+      "t": 1788478608,
+      "ty": "buy",
+      "w": "0x2bce55b5f8877abc571dfee10b8a62adbf3a3b49",
+      "ctr": 728452.36,
+      "usd": 10.96,
+      "s": 0
+    },
     {
       "h": "0x2c9f12f9a4d1963ef2a5f2f2ce00475478fa20ad4881eafa14f9394fe1c0c985",
       "t": 1788469324,
@@ -1772,24 +1790,6 @@
       "w": "0x70f64a833aa1003bf76341e3c8e0d28766978be2",
       "ctr": 290235.76,
       "usd": 7.14,
-      "s": 0
-    },
-    {
-      "h": "0xec53f7c153ff6042f8376c2fd5b43ae8f841b14bcbd7a484c9fc06d3ec7ee6f6",
-      "t": 1787361623,
-      "ty": "buy",
-      "w": "0x52f6fe15034ffad0e32941d9fff857c9e5235a13",
-      "ctr": 350005.67,
-      "usd": 8.61,
-      "s": 0
-    },
-    {
-      "h": "0x31890e9e6a3cf6c0b56cae11d97937ca7d9b04295daa11aa0f00ac3d887140b4",
-      "t": 1787361617,
-      "ty": "buy",
-      "w": "0x52f6fe15034ffad0e32941d9fff857c9e5235a13",
-      "ctr": 352873.81,
-      "usd": 8.68,
       "s": 0
     }
   ],
