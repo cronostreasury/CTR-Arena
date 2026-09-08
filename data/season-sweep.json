@@ -1,18 +1,18 @@
 {
-  "updatedAt": 1788887591,
+  "updatedAt": 1788897270,
   "seasonStart": 1782864000,
   "seasonEnd": 1785456000,
   "seasonDays": 30,
   "market": {
-    "price": 0.00001427,
-    "change24h": -0.03,
-    "volume24h": 0.47,
-    "liquidity": 3291.69,
-    "buys24h": 0,
+    "price": 0.00001619,
+    "change24h": 13.38,
+    "volume24h": 45.72,
+    "liquidity": 3640.55,
+    "buys24h": 4,
     "sells24h": 2
   },
   "stats": {
-    "totalTrades": 1181,
+    "totalTrades": 1185,
     "totalBuys": 406,
     "totalSells": 183,
     "totalWallets": 62,
@@ -24,12 +24,12 @@
   "wallets": {
     "0x2bce55b5f8877abc571dfee10b8a62adbf3a3b49": {
       "rank": 1,
-      "fs": 1087.02,
+      "fs": 1087.05,
       "bV": 526.04,
       "sV": 230.59,
       "bC": 35045262.6873,
       "sC": 18718176.2851,
-      "balC": 25000000,
+      "balC": 25000776.8013,
       "aw": 0.4007,
       "hb": 1.5,
       "n": 138,
@@ -127,7 +127,7 @@
       "sV": 715.56,
       "bC": 0,
       "sC": 42046111.3212,
-      "balC": 54902.9297,
+      "balC": 481065.5731,
       "aw": 0,
       "hb": 1.5,
       "n": 78,
@@ -883,7 +883,7 @@
       "sV": 18.23,
       "bC": 0,
       "sC": 1052162.8857,
-      "balC": 0,
+      "balC": 17046.7904,
       "aw": 0,
       "hb": 1.5,
       "n": 1,
@@ -892,6 +892,42 @@
     }
   },
   "trades": [
+    {
+      "h": "0xc2c94bbf8a36ca53999a2be47ab57c8dbe71a5dd3a980269151f7d2e47fd9918",
+      "t": 1788888606,
+      "ty": "buy",
+      "w": "0x52f6fe15034ffad0e32941d9fff857c9e5235a13",
+      "ctr": 278951.51,
+      "usd": 4.52,
+      "s": 0
+    },
+    {
+      "h": "0xd6427c2f9f59e88ab0c1ef993956abd91acb7ef090af6ff954de4b49ab8a9b96",
+      "t": 1788888596,
+      "ty": "buy",
+      "w": "0x52f6fe15034ffad0e32941d9fff857c9e5235a13",
+      "ctr": 374152.11,
+      "usd": 6.06,
+      "s": 0
+    },
+    {
+      "h": "0x6b8861893bdb7c7e4cad1dc85853d88812e1f82cab174d9bd222bd2d01236197",
+      "t": 1788888583,
+      "ty": "buy",
+      "w": "0x52f6fe15034ffad0e32941d9fff857c9e5235a13",
+      "ctr": 1143419.21,
+      "usd": 18.51,
+      "s": 0
+    },
+    {
+      "h": "0x19e34fc87d88f108edd9bf88a473dc6dbd4e5ed5d874f2152034d20874729ea2",
+      "t": 1788888573,
+      "ty": "buy",
+      "w": "0x52f6fe15034ffad0e32941d9fff857c9e5235a13",
+      "ctr": 780620.88,
+      "usd": 12.64,
+      "s": 0
+    },
     {
       "h": "0x6505dd5a2dae17eaa6b9f5d67892f3b7de989fe8fb7fe5215f5339ca23d1d981",
       "t": 1788814887,
@@ -1754,42 +1790,6 @@
       "w": "0x2bce55b5f8877abc571dfee10b8a62adbf3a3b49",
       "ctr": 889670.18,
       "usd": 15.96,
-      "s": 0
-    },
-    {
-      "h": "0xda6dd09c1e6bedde9fc33eda0ccc1253cb13a1832ef98c9dacf932cba9a995a6",
-      "t": 1787551809,
-      "ty": "buy",
-      "w": "0x2bce55b5f8877abc571dfee10b8a62adbf3a3b49",
-      "ctr": 808586.96,
-      "usd": 14.51,
-      "s": 0
-    },
-    {
-      "h": "0xadf43ef1d9d87d8cd9a904c36fd623e480e90c472ecaf90b35225d413ae2c246",
-      "t": 1787551738,
-      "ty": "buy",
-      "w": "0x2d13969f8129883d9019a213ac46dab2c1f82bff",
-      "ctr": 316084.84,
-      "usd": 5.67,
-      "s": 0
-    },
-    {
-      "h": "0xa24a8cbae103f3a4663d7bf4da5d8e2de4ec7ecc196987c981f891b557c87055",
-      "t": 1787551600,
-      "ty": "sell",
-      "w": "0x70f64a833aa1003bf76341e3c8e0d28766978be2",
-      "ctr": 356498.77,
-      "usd": 6.4,
-      "s": 0
-    },
-    {
-      "h": "0x1a946235f7563f464d1bee538cb9e95991975b547b534afeeb9ac57fa5b8f254",
-      "t": 1787551596,
-      "ty": "buy",
-      "w": "0x2bce55b5f8877abc571dfee10b8a62adbf3a3b49",
-      "ctr": 822150.78,
-      "usd": 14.75,
       "s": 0
     }
   ],
