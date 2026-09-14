@@ -1,14 +1,14 @@
 {
-  "updatedAt": 1789345402,
+  "updatedAt": 1789362553,
   "seasonStart": 1782864000,
   "seasonEnd": 1785456000,
   "seasonDays": 30,
   "market": {
     "price": 0.00001375,
-    "change24h": -4.06,
-    "volume24h": 127.05,
+    "change24h": -3.84,
+    "volume24h": 125.51,
     "liquidity": 3177.03,
-    "buys24h": 7,
+    "buys24h": 6,
     "sells24h": 14
   },
   "stats": {
