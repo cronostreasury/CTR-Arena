@@ -1,18 +1,18 @@
 {
-  "updatedAt": 1791224118,
+  "updatedAt": 1791245397,
   "seasonStart": 1783641600,
   "seasonEnd": 1786233600,
   "seasonDays": 30,
   "market": {
-    "price": 2.604e-11,
-    "change24h": 4.44,
-    "volume24h": 38.73,
-    "liquidity": 4476.04,
-    "buys24h": 5,
-    "sells24h": 0
+    "price": 2.58e-11,
+    "change24h": -2.62,
+    "volume24h": 5.67,
+    "liquidity": 4432.19,
+    "buys24h": 3,
+    "sells24h": 1
   },
   "stats": {
-    "totalTrades": 429,
+    "totalTrades": 431,
     "totalBuys": 97,
     "totalSells": 83,
     "totalWallets": 71,
@@ -85,7 +85,7 @@
       "sV": 0,
       "bC": 41495478105.1367,
       "sC": 0,
-      "balC": 253710444887.1247,
+      "balC": 225000000000,
       "aw": 1,
       "hb": 1.5,
       "n": 3,
@@ -1019,6 +1019,24 @@
   },
   "trades": [
     {
+      "h": "0x40e14667505eda52f483e90c57206c97e89398ab3cc961b025e502a69b0debe6",
+      "t": 1791234243,
+      "ty": "buy",
+      "w": "0x098d1768cccfd822d4d16f545ac46c3c6f913a17",
+      "ctr": 96039642380.73,
+      "usd": 2.48,
+      "s": 0
+    },
+    {
+      "h": "0xcb665e693976af850591fff3cebbb784b598dc6b566cd573fe67676b6125c450",
+      "t": 1791231264,
+      "ty": "sell",
+      "w": "0x62f738910b8e228aab6ee4c1c6f3d67bb536ed14",
+      "ctr": 28480761328.03,
+      "usd": 0.73,
+      "s": 0
+    },
+    {
       "h": "0xf3b7efeba3b2b6493c1430cedbce0604ee2d736c48c17fba0a8751d6cf907ae3",
       "t": 1791208067,
       "ty": "buy",
@@ -1898,24 +1916,6 @@
       "w": "0xc0689a0025bcdb5fdd33f43afe17553a877c6326",
       "ctr": 216687756214.57,
       "usd": 7.99,
-      "s": 0
-    },
-    {
-      "h": "0x95bbd9e014206f94ce3e4d9ffc3897c3335aae3975648d68079699c2178cccbd",
-      "t": 1788646449,
-      "ty": "sell",
-      "w": "0xc0de8a7b31fab5f8ec504fddb4ba1f7b22c5fc83",
-      "ctr": 750000000000.46,
-      "usd": 27.67,
-      "s": 0
-    },
-    {
-      "h": "0x91dc7ad128b0e0dfe2eec3d56d03b5cad2c6143e47d30387f70f490d3f79178c",
-      "t": 1788632546,
-      "ty": "sell",
-      "w": "0x0e503375109643fff0f4807a44f46a5e4d335c28",
-      "ctr": 168861225102.9,
-      "usd": 6.41,
       "s": 0
     }
   ],
