@@ -1,18 +1,18 @@
 {
-  "updatedAt": 1792055700,
+  "updatedAt": 1792073454,
   "seasonStart": 1782864000,
   "seasonEnd": 1785456000,
   "seasonDays": 30,
   "market": {
-    "price": 0.00000457,
-    "change24h": -5.61,
-    "volume24h": 12.72,
-    "liquidity": 1868.46,
+    "price": 0.00000453,
+    "change24h": -6.44,
+    "volume24h": 20.67,
+    "liquidity": 1867.99,
     "buys24h": 1,
-    "sells24h": 2
+    "sells24h": 6
   },
   "stats": {
-    "totalTrades": 1357,
+    "totalTrades": 1359,
     "totalBuys": 406,
     "totalSells": 183,
     "totalWallets": 62,
@@ -99,7 +99,7 @@
       "sV": 715.56,
       "bC": 0,
       "sC": 42046111.3212,
-      "balC": 464669.0265,
+      "balC": 59875.0986,
       "aw": 0,
       "hb": 1.5,
       "n": 78,
@@ -892,6 +892,24 @@
     }
   },
   "trades": [
+    {
+      "h": "0x093108e0e61ac081080b82a6376bc0418e7e03df9dbf0fa33bde37c85b40bc42",
+      "t": 1792066801,
+      "ty": "sell",
+      "w": "0x70f64a833aa1003bf76341e3c8e0d28766978be2",
+      "ctr": 404156.92,
+      "usd": 1.83,
+      "s": 0
+    },
+    {
+      "h": "0x169b352d55f6501e79de70e2373729b6501c17deff652569493797f97ca6be98",
+      "t": 1792066751,
+      "ty": "sell",
+      "w": "0xa542b8ca57781d4495dce5d71704bb0d4301123f",
+      "ctr": 603368.82,
+      "usd": 2.73,
+      "s": 0
+    },
     {
       "h": "0x92a5b02014ce2ffa3936c8f614382e7eef9a112a17968ccf5dbf7224e7e3411b",
       "t": 1792049630,
@@ -1772,24 +1790,6 @@
       "w": "0x2bce55b5f8877abc571dfee10b8a62adbf3a3b49",
       "ctr": 675000,
       "usd": 6.28,
-      "s": 0
-    },
-    {
-      "h": "0x8bab6bd88d64b27ae6005955eddf23c50eb8ccd06acddc4b152e2f083a1d7b12",
-      "t": 1789622729,
-      "ty": "sell",
-      "w": "0x2bce55b5f8877abc571dfee10b8a62adbf3a3b49",
-      "ctr": 675000,
-      "usd": 6.28,
-      "s": 0
-    },
-    {
-      "h": "0xb132e148ba6e786e87976adc654db966278b4b732ceb5e1f62b287588d81ad0b",
-      "t": 1789622716,
-      "ty": "sell",
-      "w": "0x70f64a833aa1003bf76341e3c8e0d28766978be2",
-      "ctr": 465797.56,
-      "usd": 4.34,
       "s": 0
     }
   ],
