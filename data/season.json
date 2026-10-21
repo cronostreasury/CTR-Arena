@@ -1,18 +1,18 @@
 {
-  "updatedAt": 1792577956,
+  "updatedAt": 1792596061,
   "seasonStart": 1778803200,
   "seasonEnd": 1781395200,
   "seasonDays": 30,
   "market": {
-    "price": 0,
-    "change24h": 0,
-    "volume24h": 0,
-    "liquidity": 0,
-    "buys24h": 0,
-    "sells24h": 0
+    "price": 0.000007532,
+    "change24h": 0.4,
+    "volume24h": 81.45,
+    "liquidity": 5337.7,
+    "buys24h": 1,
+    "sells24h": 1
   },
   "stats": {
-    "totalTrades": 384,
+    "totalTrades": 386,
     "totalBuys": 82,
     "totalSells": 51,
     "totalWallets": 55,
@@ -29,7 +29,7 @@
       "sV": 0,
       "bC": 511789.3382,
       "sC": 0,
-      "balC": 4003780.3191,
+      "balC": 1060817.4473,
       "aw": 1,
       "hb": 1.5,
       "n": 2,
@@ -794,6 +794,24 @@
     }
   },
   "trades": [
+    {
+      "h": "0x98e87dbaa27d595d264c137d176bb1bdef36b1fe61ac6a32d58c2549a76b5031",
+      "t": 1792584743,
+      "ty": "buy",
+      "w": "0x0e503375109643fff0f4807a44f46a5e4d335c28",
+      "ctr": 630491.59,
+      "usd": 4.75,
+      "s": 0
+    },
+    {
+      "h": "0xf57996a1ef59f01cb85c5d4576979e39731d5ac5212add02aef040de2763af1d",
+      "t": 1792584742,
+      "ty": "sell",
+      "w": "0x4541679732a0124fae4e26dad91021c9423efdd4",
+      "ctr": 9900000,
+      "usd": 74.57,
+      "s": 0
+    },
     {
       "h": "0xe78d8d09e2bf71a164d6903e567b005f18471d068cfa98d59ee27e56133d6475",
       "t": 1792484752,
@@ -1674,24 +1692,6 @@
       "w": "0xb8f21861edd1e2c3e853d8ac2a2f983f2963c96a",
       "ctr": 518985.4,
       "usd": 5.93,
-      "s": 0
-    },
-    {
-      "h": "0x96d21176f25cb639bd4a37cad7b0ddaa6238fae8b28ba28919d640f0be52491c",
-      "t": 1786147523,
-      "ty": "sell",
-      "w": "0xb8f21861edd1e2c3e853d8ac2a2f983f2963c96a",
-      "ctr": 518985.4,
-      "usd": 5.93,
-      "s": 0
-    },
-    {
-      "h": "0x33f6bd9d056a6dcee072a60d400734f779927c880ee0b4cc848e82eee09da709",
-      "t": 1786147507,
-      "ty": "sell",
-      "w": "0xb8f21861edd1e2c3e853d8ac2a2f983f2963c96a",
-      "ctr": 345990.27,
-      "usd": 3.95,
       "s": 0
     }
   ],
