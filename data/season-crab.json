@@ -1,18 +1,18 @@
 {
-  "updatedAt": 1792578522,
+  "updatedAt": 1792596761,
   "seasonStart": 1783641600,
   "seasonEnd": 1786233600,
   "seasonDays": 30,
   "market": {
-    "price": 0,
-    "change24h": 0,
-    "volume24h": 0,
-    "liquidity": 0,
-    "buys24h": 0,
+    "price": 2.014e-11,
+    "change24h": 2.05,
+    "volume24h": 20.41,
+    "liquidity": 3452.74,
+    "buys24h": 2,
     "sells24h": 0
   },
   "stats": {
-    "totalTrades": 486,
+    "totalTrades": 488,
     "totalBuys": 97,
     "totalSells": 83,
     "totalWallets": 71,
@@ -785,7 +785,7 @@
       "sV": 78.94,
       "bC": 0,
       "sC": 1220268462375.5786,
-      "balC": 398821028676.3923,
+      "balC": 1710747139191.8777,
       "aw": 0,
       "hb": 1.5,
       "n": 2,
@@ -1018,6 +1018,24 @@
     }
   },
   "trades": [
+    {
+      "h": "0xa52eb714d7e495a4ea92b76ecbf909e00458b14b18fefe6053689173156d2932",
+      "t": 1792590095,
+      "ty": "buy",
+      "w": "0xde7d71a2f0aa36b3bbc6b4ff60d0b0b750eb8ff6",
+      "ctr": 894342969153.49,
+      "usd": 18.01,
+      "s": 0
+    },
+    {
+      "h": "0x4ae4e1a1a63e1f5bea41ac7d359aac3c5ee0629c8136d1f8c9782c6a6dad080e",
+      "t": 1792584844,
+      "ty": "buy",
+      "w": "0x227f675728dcd21f231848828aefae90de73582e",
+      "ctr": 128009882978.39,
+      "usd": 2.58,
+      "s": 0
+    },
     {
       "h": "0x50c7692e2d56c50de726c94ab43c5d3694a0e0215355365d0052234274410471",
       "t": 1792294123,
@@ -1898,24 +1916,6 @@
       "w": "0x20cdb04ba77ffb7e923a368ad6d74e2b74b4571f",
       "ctr": 12593217735.66,
       "usd": 0.55,
-      "s": 0
-    },
-    {
-      "h": "0x20e45001afb3faa9a81001c7484097f7f845b20b0b2d2f7fec88834351a03ae8",
-      "t": 1790068908,
-      "ty": "buy",
-      "w": "0x20cdb04ba77ffb7e923a368ad6d74e2b74b4571f",
-      "ctr": 41403218009.69,
-      "usd": 1.8,
-      "s": 0
-    },
-    {
-      "h": "0xd16f1e6909925a56322df6b59c9c60c5a340415d5036e976dbb41bf017a58e37",
-      "t": 1790042941,
-      "ty": "buy",
-      "w": "0x8871bbe99c1aace0d3fe1752b032e3b6057ac5a2",
-      "ctr": 40547773804.54,
-      "usd": 1.74,
       "s": 0
     }
   ],
