@@ -1,15 +1,15 @@
 {
-  "updatedAt": 1792961936,
+  "updatedAt": 1793046020,
   "seasonStart": 1778803200,
   "seasonEnd": 1781395200,
   "seasonDays": 30,
   "market": {
-    "price": 0.000007053,
-    "change24h": 0,
-    "volume24h": 0.54,
-    "liquidity": 4997.68,
-    "buys24h": 1,
-    "sells24h": 0
+    "price": null,
+    "change24h": null,
+    "volume24h": null,
+    "liquidity": null,
+    "buys24h": null,
+    "sells24h": null
   },
   "stats": {
     "totalTrades": 387,
