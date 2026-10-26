@@ -448,7 +448,9 @@
     } catch (err) {
       console.error(err);
       statusEl.innerHTML = `<span class="dot" style="background:var(--danger);box-shadow:0 0 8px var(--danger)"></span>API error`;
-      $("#tx-body").innerHTML = `<tr><td colspan="7" class="error">Could not reach Cronoscan API: ${err.message}</td></tr>`;
+      const errRow = el("tr", {}, el("td", { colspan: "7", class: "error" }, `Could not reach Cronoscan API: ${err.message}`));
+      const errBody = $("#tx-body");
+      errBody.replaceChildren(errRow);
     }
   }
 

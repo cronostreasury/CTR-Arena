@@ -3,16 +3,18 @@
  * SWEEP Trading Season — Snapshot Builder
  *
  * Runs in GitHub Actions every 5 minutes. Fetches all SWEEP token transfers
- * involving the LP pair from Cronos Explorer API, builds the leaderboard,
- * computes deterministic jackpot rolls, fetches SWEEP balances via RPC,
- * and writes a clean JSON snapshot to data/season.json.
+ * involving the LP pair via eth_getLogs on public Cronos RPC, builds the
+ * leaderboard, computes deterministic jackpot rolls, fetches SWEEP balances
+ * via RPC, and writes data/trades-sweep.json (trade store + resume cursor)
+ * plus a clean frontend snapshot to data/season-sweep.json.
  *
- * The frontend (index.html) reads this JSON. No API key, no RPC calls
+ * The frontend (SWEEP.html) reads season-sweep.json. No API key, no RPC calls
  * from the browser.
  */
 
 const fs = require('fs');
 const path = require('path');
+const core = require('./lib/snapshot-core');
 
 // ====================== CONFIG ======================
 // API_KEY is no longer required (we read directly from chain via RPC)
@@ -138,40 +140,15 @@ async function fetchTransfers(fromBlockArg = null) {
     console.log(`  Block range: ${fromBlock} -> ${latest} (${latest - fromBlock} blocks)`);
   }
 
-  const chunks = [];
-  for (let start = fromBlock; start <= latest; start += CHUNK) {
-    chunks.push({ start, end: Math.min(start + CHUNK - 1, latest) });
-  }
-  console.log(`  ${chunks.length} chunks of ${CHUNK} to query...`);
+  const { logs: allLogs, failedBlocks } = await core.fetchLogsChunked({
+    rpcCall, address: SWEEP, topic0: TRANSFER_SIG, lpPad, fromBlock, latest,
+    chunk: CHUNK, parallel: 4, sleep, log: console.log
+  });
 
-  const allLogs = [];
-  let chunkDone = 0, chunkFailed = 0;
-  const PARALLEL = 4;
-
-  for (let i = 0; i < chunks.length; i += PARALLEL) {
-    const batch = chunks.slice(i, i + PARALLEL);
-    const results = await Promise.all(batch.map(async ({ start, end }) => {
-      const fb = '0x' + start.toString(16);
-      const tb = '0x' + end.toString(16);
-      try {
-        const [fromLogs, toLogs] = await Promise.all([
-          rpcCall('eth_getLogs', [{ address: SWEEP, fromBlock: fb, toBlock: tb, topics: [TRANSFER_SIG, lpPad, null] }]),
-          rpcCall('eth_getLogs', [{ address: SWEEP, fromBlock: fb, toBlock: tb, topics: [TRANSFER_SIG, null, lpPad] }])
-        ]);
-        return [...(fromLogs || []), ...(toLogs || [])];
-      } catch (e) { chunkFailed++; return []; }
-    }));
-    results.forEach(logs => allLogs.push(...logs));
-    chunkDone += batch.length;
-    if (chunkDone % 40 === 0 || chunkDone === chunks.length) {
-      console.log(`    Progress: ${chunkDone}/${chunks.length} chunks -- ${allLogs.length} logs`);
-    }
-    if (i + PARALLEL < chunks.length) await sleep(50);
-  }
-
-  if (chunkFailed > 0) console.warn(`  WARN: ${chunkFailed} chunks failed`);
+  // Failed chunks are reported (not dropped): main() holds lastBlock back to before them.
+  if (failedBlocks.length > 0) console.warn(`  WARN: ${failedBlocks.length} chunks failed — cursor will not advance past them`);
   console.log(`  Collected ${allLogs.length} raw Transfer events`);
-  if (!allLogs.length) return { transfers: [], latestBlock: latest };
+  if (!allLogs.length) return { transfers: [], latestBlock: latest, failedBlocks };
 
   // Fetch block timestamps
   const uniqueBlocks = [...new Set(allLogs.map(l => l.blockNumber))];
@@ -188,35 +165,40 @@ async function fetchTransfers(fromBlockArg = null) {
     if (i + 12 < uniqueBlocks.length) await sleep(60);
   }
 
-  const transfers = allLogs.map(log => ({
-    hash:        log.transactionHash,
-    from:        '0x' + log.topics[1].slice(26),
-    to:          '0x' + log.topics[2].slice(26),
-    value:       BigInt(log.data).toString(),
-    timeStamp:   String(blockTimes[log.blockNumber] || 0),
-    tokenDecimal: String(DEC),
-    blockNumber: log.blockNumber
-  })).filter(t => parseInt(t.timeStamp) > 0);
+  const transfers = [];
+  for (const log of allLogs) {
+    const ts = blockTimes[log.blockNumber];
+    // No timestamp -> cannot be scored now; hold the cursor back so it is re-fetched.
+    if (!ts) { failedBlocks.push(parseInt(log.blockNumber, 16)); continue; }
+    transfers.push({
+      hash:        log.transactionHash,
+      from:        '0x' + log.topics[1].slice(26),
+      to:          '0x' + log.topics[2].slice(26),
+      value:       BigInt(log.data).toString(),
+      timeStamp:   String(ts),
+      tokenDecimal: String(DEC),
+      blockNumber: log.blockNumber
+    });
+  }
 
-  return { transfers, latestBlock: latest };
+  return { transfers, latestBlock: latest, failedBlocks };
 }
 
+// Unknown metrics are emitted as null, never 0. The frontend has to be able to
+// tell "DexScreener gave us nothing" from "the real 24h change is 0%", and it
+// cannot if both arrive as the number 0.
 async function fetchPrice() {
   try {
     const d = await fetchJson(`https://api.dexscreener.com/latest/dex/pairs/cronos/${LP}`);
     const p = d.pair || d.pairs?.[0];
-    if (!p) return { price: 0, change24h: 0, volume24h: 0, liquidity: 0, buys24h: 0, sells24h: 0 };
-    return {
-      price:      parseFloat(p.priceUsd) || 0,
-      change24h:  parseFloat(p.priceChange?.h24) || 0,
-      volume24h:  p.volume?.h24 || 0,
-      liquidity:  p.liquidity?.usd || 0,
-      buys24h:    p.txns?.h24?.buys || 0,
-      sells24h:   p.txns?.h24?.sells || 0
-    };
+    if (!p) {
+      console.error('  DexScreener returned no pair — market data unavailable this run');
+      return { ...core.MARKET_UNAVAILABLE };
+    }
+    return core.extractMarket(p);
   } catch (e) {
     console.error('  DexScreener failed:', e.message);
-    return { price: 0, change24h: 0, volume24h: 0, liquidity: 0, buys24h: 0, sells24h: 0 };
+    return { ...core.MARKET_UNAVAILABLE };
   }
 }
 
@@ -433,7 +415,8 @@ async function main() {
 
   console.log('\n[1/6] Fetching DexScreener market data...');
   const market = await fetchPrice();
-  console.log(`  Price: $${market.price.toFixed(6)} | 24h: ${market.change24h.toFixed(2)}% | Vol: $${market.volume24h.toFixed(0)} | Liq: $${market.liquidity.toFixed(0)}`);
+  const show = (v, dp) => (v === null ? 'unavailable' : v.toFixed(dp));
+  console.log(`  Price: $${show(market.price, 6)} | 24h: ${show(market.change24h, 2)}% | Vol: $${show(market.volume24h, 0)} | Liq: $${show(market.liquidity, 0)}`);
 
   console.log('\n[2/6] Loading existing snapshot + fetching new blocks...');
   // Load persistent trade store (separate from season.json)
@@ -444,16 +427,17 @@ async function main() {
   let existingTrades = [];
   let fromBlock = null;
   try {
-    const raw = fs.readFileSync(TRADES_PATH, 'utf8');
-    const store = JSON.parse(raw);
+    const store = core.readJsonStore(TRADES_PATH);
+    if (!store) throw Object.assign(new Error('missing'), { code: 'ENOENT' });
     existingTrades = store.trades    || [];
     fromBlock      = store.lastBlock || null;
     console.log(`  Loaded ${existingTrades.length} trades from trades.json. lastBlock: ${fromBlock || 'none (cold start)'}`);
   } catch (e) {
+    if (e.code !== 'ENOENT') throw e; // corrupt store: fail instead of rebuilding over it
     console.log('  No trades.json found — cold start.');
   }
 
-  const { transfers, latestBlock } = await fetchTransfers(fromBlock);
+  const { transfers, latestBlock, failedBlocks } = await fetchTransfers(fromBlock);
 
   if (transfers.length === 0 && existingTrades.length === 0) {
     console.log('  No transfers found at all — writing empty snapshot.');
@@ -463,9 +447,25 @@ async function main() {
 
   console.log('\n[3/6] Resolving real trader EOAs for new transfers...');
   const txFromMap = await resolveRealTraders(transfers);
+  // A transfer whose tx sender could not be resolved is skipped by buildTrades,
+  // so its block must not be marked as processed.
+  for (const t of transfers) {
+    if (!txFromMap[(t.hash || '').toLowerCase()]) failedBlocks.push(parseInt(t.blockNumber, 16));
+  }
+  // Without a price a trade cannot be valued. Persisting it at $0 would write a
+  // permanent wrong number into trades-sweep.json (and into every wallet volume
+  // and jackpot derived from it), so hold the cursor and re-process these blocks
+  // once pricing recovers — the same rule the RPC failure path uses.
+  const priceAvailable = market.price !== null;
+  if (!priceAvailable && transfers.length) {
+    console.warn(`  WARN: no market price this run — holding ${transfers.length} new transfers for the next run rather than valuing them at $0`);
+    for (const t of transfers) failedBlocks.push(parseInt(t.blockNumber, 16));
+  }
+  const cursorBlock = core.safeCursor(latestBlock, failedBlocks);
+  if (cursorBlock < latestBlock) console.warn(`  WARN: lastBlock held at ${cursorBlock} (chain head ${latestBlock}) — missing data will be retried next run`);
 
   console.log('\n[4/6] Building and merging trades...');
-  const newTrades = buildTrades(transfers, market.price, txFromMap);
+  const newTrades = priceAvailable ? buildTrades(transfers, market.price, txFromMap) : [];
   // Merge: new trades override existing if same hash (handles re-priced edge cases)
   const existingByHash = new Map(existingTrades.map(t => [t.h, t]));
   newTrades.forEach(t => existingByHash.set(t.h, t));
@@ -538,14 +538,14 @@ async function main() {
 
   // Write persistent trade store
   const tradeStore = {
-    lastBlock: latestBlock,
+    lastBlock: cursorBlock,
     updatedAt: Math.floor(Date.now() / 1000),
     count:     trades.length,
     trades     // all accumulated trades for scoring on next run
   };
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(TRADES_PATH, JSON.stringify(tradeStore));
-  console.log(`  trades.json: ${trades.length} trades, lastBlock: ${latestBlock}`);
+  core.writeJsonAtomic(TRADES_PATH, tradeStore);
+  console.log(`  trades.json: ${trades.length} trades, lastBlock: ${cursorBlock}`);
 
   // Write compact frontend snapshot (no raw trades — frontend only needs feed + wallets)
   const snapshot = {
@@ -578,7 +578,7 @@ async function main() {
 
   // Write season.json
   const outPath = SNAPSHOT_PATH;
-  fs.writeFileSync(outPath, JSON.stringify(snapshot, null, 2));
+  core.writeJsonAtomic(outPath, snapshot, 2);
 
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
   const sizeKB  = (fs.statSync(outPath).size / 1024).toFixed(1);

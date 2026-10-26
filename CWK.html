@@ -105,6 +105,10 @@ nav .inner{display:flex;align-items:center;justify-content:space-between;max-wid
 .bl{color:var(--green);background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15)}
 .bl .d{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:blink 1.5s infinite}
 .berr{color:var(--red);background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)}
+/* Stale: the snapshot loaded but is too old to be called live. Deliberately has
+   no .d pulse dot, so "live" reads differently at a glance. */
+.bst{color:var(--gold);background:rgba(212,168,67,.07);border:1px solid rgba(212,168,67,.22)}
+body.snap-stale .st .sv{opacity:.55}
 
 .tb{width:100%;border-collapse:collapse}
 .tb th{font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:.14em;padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);font-weight:500}
@@ -268,11 +272,13 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
   </section>
 
   <div class="stats-row">
-    <div class="st"><div class="sl">CRAB Price</div><div class="sv ld" id="sPrice">$0.00</div><div class="ss" id="sPriceChange" style="color:var(--text4)">Loading...</div></div>
-    <div class="st"><div class="sl">24h Volume</div><div class="sv ld" id="sVolume">$0</div><div class="ss" style="color:var(--text3)">DexScreener</div></div>
-    <div class="st"><div class="sl">Liquidity</div><div class="sv ld" id="sLiquidity">$0</div><div class="ss" style="color:var(--text3)">Pool</div></div>
-    <div class="st"><div class="sl">Traders</div><div class="sv ld" id="sTraders">0</div><div class="ss" style="color:var(--text3)">This season</div></div>
-    <div class="st"><div class="sl">Total Trades</div><div class="sv ld" id="sTrades">0</div><div class="ss" style="color:var(--text3)">Buys+Sells</div></div>
+    <!-- Placeholders are "--", not 0: nothing has loaded yet, and a zero here
+         would be indistinguishable from a real measured zero. -->
+    <div class="st"><div class="sl">CRAB Price</div><div class="sv ld" id="sPrice">--</div><div class="ss" id="sPriceChange" style="color:var(--text4)">Loading...</div></div>
+    <div class="st"><div class="sl">24h Volume</div><div class="sv ld" id="sVolume">--</div><div class="ss" style="color:var(--text3)">DexScreener</div></div>
+    <div class="st"><div class="sl">Liquidity</div><div class="sv ld" id="sLiquidity">--</div><div class="ss" style="color:var(--text3)">Pool</div></div>
+    <div class="st"><div class="sl">Traders</div><div class="sv ld" id="sTraders">--</div><div class="ss" style="color:var(--text3)">This season</div></div>
+    <div class="st"><div class="sl">Total Trades</div><div class="sv ld" id="sTrades">--</div><div class="ss" style="color:var(--text3)">Buys+Sells</div></div>
   </div>
 
   <section class="cd-sec">
@@ -327,7 +333,7 @@ footer{border-top:1px solid var(--border);padding:36px 0;margin-top:20px}
   <section class="section" id="leaderboard">
     <div class="sec-head"><div class="sec-icon" style="background:rgba(255,94,58,.06)">&#x1F3C6;</div><div class="sec-title">Live Leaderboard</div></div>
     <div class="sec-sub">Ranked by final score. On-chain CRAB transfer data.</div>
-    <div class="card"><div class="card-hd"><div style="display:flex;align-items:center;gap:12px"><div class="card-t">Top Traders</div><div class="badge bl"><div class="d"></div>LIVE</div></div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text4)" id="lbCount">--</div></div>
+    <div class="card"><div class="card-hd"><div style="display:flex;align-items:center;gap:12px"><div class="card-t">Top Traders</div><div class="badge" id="lbStatus">--</div></div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text4)" id="lbCount">--</div></div>
       <div style="overflow-x:auto"><table class="tb"><thead><tr><th style="width:46px">#</th><th>Wallet</th><th>Score</th><th>Buy Vol</th><th>Sell Vol</th><th>Anti-Wash</th><th>Hold Bonus</th></tr></thead><tbody id="lbBody"><tr><td colspan="7" class="tbl"><div class="spin"></div></td></tr></tbody></table></div>
     </div>
   </section>
@@ -383,9 +389,12 @@ Final Score = Raw Points x Anti-Wash x Holding Bonus</span></div>
     </div>
   </section>
 
-  <footer><div class="fti"><div class="ftl">CRAB · Season 1<span class="ftc">Contract: 0xC84398E9BBBC028BA81e61D2c45194049D0173Ef</span></div><div class="ftlk"><a href="#" target="_blank">Main Site</a><a href="https://dexscreener.com/cronos/0x66158f0BaBe67e49054E00C5e5CeDf7e2FC2Abc3" target="_blank">DexScreener</a><a href="#" target="_blank">Governance</a></div></div><div class="ftsrc">Data from <strong>Cronos Explorer API</strong> &amp; <strong>DexScreener</strong> · Auto-refresh 30s</div></footer>
+  <footer><div class="fti"><div class="ftl">CRAB · Season 1<span class="ftc">Contract: 0xC84398E9BBBC028BA81e61D2c45194049D0173Ef</span></div><div class="ftlk"><a href="#" target="_blank">Main Site</a><a href="https://dexscreener.com/cronos/0x66158f0BaBe67e49054E00C5e5CeDf7e2FC2Abc3" target="_blank">DexScreener</a><a href="#" target="_blank">Governance</a></div></div><div class="ftsrc">Data from <strong>Cronos Explorer API</strong> &amp; <strong>DexScreener</strong> · Page re-reads the snapshot every 60s</div></footer>
 </div>
 
+<!-- Snapshot freshness + market-value state rules, shared with the sibling
+     pages and test/market-state.test.js. Must load before the page script. -->
+<script src="assets/js/market-state.js"></script>
 <script>
 // === CANVAS BACKGROUND ===
 const cv=document.getElementById('bgCanvas'),cx=cv.getContext('2d');let W,H,pts=[];
@@ -413,52 +422,86 @@ let price=0,trades=[],tm={},lb=[],jackpots=[];
 
 const dbg=document.getElementById('debugLog');
 let debugVisible=false;
-function log(m){console.log('[CRAB]',m);if(dbg){dbg.innerHTML+=new Date().toLocaleTimeString()+' '+m+'<br>';dbg.scrollTop=dbg.scrollHeight;}if(debugVisible&&dbg)dbg.style.display='block'}
-function fU(n){if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)}
-function fN(n){return n.toLocaleString('en-US',{maximumFractionDigits:0})}
-function fC(n){if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toFixed(0)}
-function tA(ts){const s=Math.floor((Date.now()-ts*1e3)/1e3);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<864e2)return Math.floor(s/3600)+'h ago';return Math.floor(s/864e2)+'d ago'}
+function log(m){console.log('[CRAB]',m);if(dbg){dbg.appendChild(document.createTextNode(new Date().toLocaleTimeString()+' '+m));dbg.appendChild(document.createElement('br'));dbg.scrollTop=dbg.scrollHeight;}if(debugVisible&&dbg)dbg.style.display='block'}
+// All value formatting goes through MarketState so a missing/invalid figure
+// renders as "--" everywhere instead of as a plausible-looking 0.
+const MS=window.MarketState;
+function fU(n){return MS.fmtUsd(n)}
+function fN(n){return MS.fmtCount(n)}
+function fC(n){return MS.fmtCompact(n)}
+// A leading +/- asserts a known direction, so it is dropped when the figure is
+// unavailable — "+--" would read as a real inflow of unknown size.
+function fSigned(n,sign){const v=MS.num(n);return v===null?MS.PLACEHOLDER:sign+fU(v)}
+function tA(ts){const t=MS.num(ts);return t===null?MS.PLACEHOLDER:MS.humanAge(Math.max(0,Date.now()/1e3-t))+' ago'}
 function $(id){return document.getElementById(id)}
-function setSt(t,ok){const e=$('feedStatus');e.innerHTML=(ok?'<div class="d"></div>':'')+t;e.className=ok?'badge bl':'badge berr'}
+function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function addr(a){return /^0x[0-9a-fA-F]{40}$/.test(a)?a:'invalid'}
+// state: 'fresh' | 'stale' | 'error'. Only 'fresh' gets the pulsing dot.
+function applyBadge(e,text,state){
+  if(!e)return;
+  e.textContent='';
+  if(state==='fresh'){const d=document.createElement('div');d.className='d';e.appendChild(d)}
+  e.appendChild(document.createTextNode(text));
+  e.className='badge '+(state==='fresh'?'bl':state==='stale'?'bst':'berr');
+}
+function setSt(t,state){applyBadge($('feedStatus'),t,state)}
 
 // === SNAPSHOT LOADER ===
 // Single fetch of pre-computed JSON. No API key, no RPC, no client-side scoring.
+function setMarket(m){
+  $('sPrice').textContent=MS.fmtPrice(m.price);$('sPrice').classList.remove('ld');
+  const ch=m.change24h;
+  $('sPriceChange').textContent=(ch===null?MS.PLACEHOLDER:MS.fmtPct(ch))+' (24h)';
+  $('sPriceChange').style.color=ch===null?'var(--text4)':(ch>=0?'var(--green)':'var(--red)');
+  $('sVolume').textContent=fU(m.volume24h);$('sVolume').classList.remove('ld');
+  $('sLiquidity').textContent=fU(m.liquidity);$('sLiquidity').classList.remove('ld');
+  updTicker(m);
+}
+
 async function loadSnapshot(){
-  setSt('Loading...',1);
+  setSt('Loading...','fresh');
   try{
     const r=await fetch(SNAPSHOT_URL+'?t='+Date.now()); // cache-bust
     if(!r.ok)throw new Error('HTTP '+r.status);
     const s=await r.json();
 
-    price=s.market.price;
+    // Freshness comes from the snapshot's own updatedAt, never from the fact
+    // that the fetch succeeded — a served file can be hours old. The builders
+    // run on GitHub Actions `schedule:`, whose delivery is best-effort, so the
+    // declared cron cadence cannot be assumed to have held.
+    const fresh=MS.freshness(s.updatedAt,Date.now()/1e3);
+
+    // Every market field validated up front: a real number (0 included) or null.
+    const m=MS.market(s.market);
+    price=m.price;
 
     // Map compact keys to readable names used by render functions
-    trades=s.trades.map(t=>({hash:t.h,ts:t.t,type:t.ty,trader:t.w,ctr:t.ctr,usd:t.usd,inSeason:t.s===1}));
-    jackpots=s.jackpots.map(j=>({hash:j.h,ts:j.t,trader:j.w,tierPct:j.tier,className:j.cn,usd:j.buy_usd,refund:j.refund}));
+    trades=(Array.isArray(s.trades)?s.trades:[]).map(t=>({hash:t.h,ts:t.t,type:t.ty,trader:t.w,ctr:t.ctr,usd:t.usd,inSeason:t.s===1}));
+    jackpots=(Array.isArray(s.jackpots)?s.jackpots:[]).map(j=>({hash:j.h,ts:j.t,trader:j.w,tierPct:j.tier,className:j.cn,usd:j.buy_usd,refund:j.refund}));
 
     tm={};
-    Object.entries(s.wallets).forEach(([addr,w])=>{tm[addr]={addr,...w}});
+    Object.entries(s.wallets||{}).forEach(([addr,w])=>{tm[addr]={addr,...w}});
     lb=Object.values(tm).sort((a,b)=>(a.rank||9999)-(b.rank||9999));
 
-    // Update market display + ticker
-    const m=s.market;
-    $('sPrice').textContent='$'+m.price.toFixed(6);$('sPrice').classList.remove('ld');
-    $('sPriceChange').textContent=(m.change24h>=0?'+':'')+m.change24h.toFixed(2)+'% (24h)';
-    $('sPriceChange').style.color=m.change24h>=0?'var(--green)':'var(--red)';
-    $('sVolume').textContent=fU(m.volume24h);$('sVolume').classList.remove('ld');
-    $('sLiquidity').textContent=fU(m.liquidity);$('sLiquidity').classList.remove('ld');
-    updTicker(m.price,m.change24h,m.volume24h,m.liquidity,m.buys24h,m.sells24h);
-
+    setMarket(m);
     renderFeed();renderJackpots();renderLB();updCounts(s.stats);
 
-    const ageMin=Math.max(0,Math.floor((Date.now()/1000-s.updatedAt)/60));
-    setSt(ageMin<2?'LIVE · just updated':'LIVE · '+ageMin+'m ago',1);
-    log('Snapshot OK: '+s.stats.totalTrades+' trades, '+s.stats.totalWallets+' wallets, $'+m.price.toFixed(6));
+    // Stale values stay on screen (they are real, just old) but the badges say
+    // STALE and the tiles dim, so they are never read as current.
+    const badgeState=fresh.state==='fresh'?'fresh':fresh.state==='stale'?'stale':'error';
+    setSt(fresh.label,badgeState);
+    applyBadge($('lbStatus'),fresh.state==='fresh'?'LIVE':fresh.state==='stale'?'STALE':'NO DATA',badgeState);
+    document.body.classList.toggle('snap-stale',fresh.state!=='fresh');
+
+    log('Snapshot '+fresh.state+': '+fN((s.stats||{}).totalTrades)+' trades, '+fN((s.stats||{}).totalWallets)+' wallets, price '+MS.fmtPrice(m.price));
   }catch(e){
     log('Snapshot load failed: '+e.message);
-    setSt('Snapshot unavailable',0);
+    setSt('Snapshot unavailable','error');
+    applyBadge($('lbStatus'),'NO DATA','error');
+    document.body.classList.add('snap-stale');
+    setMarket(MS.market(null)); // clear any stale figures rather than leave them looking current
     if(!trades.length){
-      $('feedBody').innerHTML='<div class="tbe">Snapshot not available yet. Auto-refresh every 5 minutes — check back shortly.</div>';
+      $('feedBody').innerHTML='<div class="tbe">Snapshot not available yet. The page re-checks every 60 seconds.</div>';
       $('lbBody').innerHTML='<tr><td colspan="7" class="tbe">Waiting for the next snapshot to load.</td></tr>';
     }
   }
@@ -476,8 +519,8 @@ function renderFeed(){
     row.className='fr'+(i<3?' fnew':'');
     if(offSeason)row.style.opacity='.45';
     row.innerHTML='<div class="ft '+(tr.type==='buy'?'buy':'sell')+'">'+(tr.type==='buy'?'BUY':'SELL')+'</div>'
-      +'<div class="fw"><a href="'+EXP+'/address/'+tr.trader+'" target="_blank" title="'+tr.trader+(offSeason?' (outside season window)':'')+'">'+tr.trader+'</a></div>'
-      +'<div class="fa" style="color:'+(tr.type==='buy'?'var(--green)':'var(--red)')+'">'+(tr.type==='buy'?'+':'-')+fU(tr.usd)+'</div>'
+      +'<div class="fw"><a href="'+EXP+'/address/'+esc(addr(tr.trader))+'" target="_blank" rel="noopener noreferrer" title="'+esc(addr(tr.trader))+(offSeason?' (outside season window)':'')+'">'+esc(addr(tr.trader))+'</a></div>'
+      +'<div class="fa" style="color:'+(tr.type==='buy'?'var(--green)':'var(--red)')+'">'+fSigned(tr.usd,tr.type==='buy'?'+':'-')+'</div>'
       +'<div class="fa" style="color:var(--text2)">'+fC(tr.ctr)+' CRAB</div>'
       +'<div class="ftm">'+tA(tr.ts)+'</div>';
     fb.appendChild(row);
@@ -500,7 +543,7 @@ function renderLB(){
     }else if(now>=SE.getTime()){
       msg='<div style="font-family:\'Manrope\',sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">Season ended</div><div style="color:var(--text3);font-size:12px">No qualifying trades were recorded this season.</div>';
     }else{
-      msg='<div style="font-family:\'Manrope\',sans-serif;font-weight:700;font-size:15px;color:var(--accent);margin-bottom:6px">Be the first trader</div><div style="color:var(--text3);font-size:12px">The first CRAB buy or sell of the season will appear here. Snapshot updates every 5 minutes.</div>';
+      msg='<div style="font-family:\'Manrope\',sans-serif;font-weight:700;font-size:15px;color:var(--accent);margin-bottom:6px">Be the first trader</div><div style="color:var(--text3);font-size:12px">The first CRAB buy or sell of the season will appear here as soon as the next snapshot picks it up.</div>';
     }
     tb.innerHTML='<tr><td colspan="7" class="tbe">'+msg+'</td></tr>';
     $('lbCount').textContent='0';
@@ -510,23 +553,34 @@ function renderLB(){
   lb.slice(0,50).forEach((t,i)=>{
     const r=i+1;
     const rc=r===1?'rk1':r===2?'rk2':r===3?'rk3':'rkn';
-    const ac=t.aw>.5?'var(--green)':t.aw>.2?'var(--gold)':'var(--red)';
-    const ap=(t.aw*100).toFixed(0);
+    // A wallet row missing its anti-wash or bonus figure shows "--" and an empty
+    // bar rather than a 0% that would look like a scored result.
+    const aw=MS.num(t.aw),hb=MS.num(t.hb);
+    const ac=aw===null?'var(--text4)':aw>.5?'var(--green)':aw>.2?'var(--gold)':'var(--red)';
+    const ap=aw===null?0:(aw*100).toFixed(0);
     const tr=document.createElement('tr');
     tr.innerHTML='<td><div class="rk '+rc+'">'+r+'</div></td>'
-      +'<td class="wc"><a href="'+EXP+'/address/'+t.addr+'" target="_blank">'+t.addr+'</a></td>'
-      +'<td class="sc">'+fN(Math.round(t.fs))+'</td>'
-      +'<td class="vb">+'+fU(t.bV)+'</td>'
-      +'<td class="vs">-'+fU(t.sV)+'</td>'
-      +'<td><div class="awb"><div class="awf" style="width:'+ap+'%;background:'+ac+'"></div></div><span style="font-family:\'DM Mono\',monospace;font-size:10px;color:'+ac+';font-weight:600">'+ap+'%</span></td>'
-      +'<td><span class="hbc">'+t.hb.toFixed(2)+'x</span></td>';
+      +'<td class="wc"><a href="'+EXP+'/address/'+esc(addr(t.addr))+'" target="_blank" rel="noopener noreferrer">'+esc(addr(t.addr))+'</a></td>'
+      +'<td class="sc">'+fN(t.fs)+'</td>'
+      +'<td class="vb">'+fSigned(t.bV,'+')+'</td>'
+      +'<td class="vs">'+fSigned(t.sV,'-')+'</td>'
+      +'<td><div class="awb"><div class="awf" style="width:'+ap+'%;background:'+ac+'"></div></div><span style="font-family:\'DM Mono\',monospace;font-size:10px;color:'+ac+';font-weight:600">'+(aw===null?MS.PLACEHOLDER:ap+'%')+'</span></td>'
+      +'<td><span class="hbc">'+(hb===null?MS.PLACEHOLDER:hb.toFixed(2)+'x')+'</span></td>';
     tb.appendChild(tr);
   });
 }
 
 function updCounts(stats){
-  $('sTraders').textContent=stats?stats.totalWallets:Object.keys(tm).length;$('sTraders').classList.remove('ld');
-  const tot=stats?(stats.totalBuys+stats.totalSells):Object.values(tm).reduce((s,t)=>s+t.n,0);
+  const st=(stats&&typeof stats==='object')?stats:{};
+  // Fall back to what was actually loaded, which is itself a real count, and
+  // only show "--" when neither the stats block nor the wallet map can answer.
+  const tw=MS.num(st.totalWallets);
+  $('sTraders').textContent=fN(tw===null?Object.keys(tm).length:tw);$('sTraders').classList.remove('ld');
+  const b=MS.num(st.totalBuys),sl=MS.num(st.totalSells);
+  let tot=(b===null||sl===null)?null:b+sl;
+  if(tot===null&&Object.keys(tm).length){
+    tot=Object.values(tm).reduce((a,t)=>a+(MS.num(t.n)||0),0);
+  }
   $('sTrades').textContent=fN(tot);$('sTrades').classList.remove('ld');
 }
 
@@ -537,15 +591,22 @@ async function lookupWallet(){
   $('dashResult').style.display='block';
 
   const trader=tm[inp];
-  if(!trader||!trader.bV){
-    $('dRank').textContent='N/A';$('dScore').textContent='0';$('dAntiWash').textContent='N/A';$('dBonus').textContent='N/A';
-    $('dpLabel').textContent='No trades in current snapshot';$('dpPct').textContent='--';$('dpFill').style.width='0%';return;
+  // Presence is decided on the record existing, not on a truthy buy volume: a
+  // wallet that only ever sold has bV === 0, which is a real figure and used to
+  // be reported here as "no trades".
+  if(!trader){
+    $('dRank').textContent='N/A';$('dScore').textContent=MS.PLACEHOLDER;$('dAntiWash').textContent='N/A';$('dBonus').textContent='N/A';
+    $('dpLabel').textContent='No trades in current snapshot';$('dpPct').textContent=MS.PLACEHOLDER;$('dpFill').style.width='0%';return;
   }
+  const fs=MS.num(trader.fs),aw=MS.num(trader.aw),hb=MS.num(trader.hb);
   $('dRank').textContent='#'+(trader.rank||lb.findIndex(t=>t.addr===inp)+1);
-  $('dScore').textContent=fN(Math.round(trader.fs||0));
-  $('dAntiWash').textContent=((trader.aw||0)*100).toFixed(0)+'%';
-  $('dBonus').textContent=(trader.hb||1).toFixed(2)+'x';
-  const tiers=[100,500,2e3,1e4,5e4];let cur=0,nxt=tiers[0];const score=trader.fs||0;
+  $('dScore').textContent=fN(fs);
+  $('dAntiWash').textContent=aw===null?MS.PLACEHOLDER:(aw*100).toFixed(0)+'%';
+  $('dBonus').textContent=hb===null?MS.PLACEHOLDER:hb.toFixed(2)+'x';
+  if(fs===null){
+    $('dpLabel').textContent='Score unavailable in current snapshot';$('dpPct').textContent=MS.PLACEHOLDER;$('dpFill').style.width='0%';return;
+  }
+  const tiers=[100,500,2e3,1e4,5e4];let cur=0,nxt=tiers[0];const score=fs;
   for(let i=0;i<tiers.length;i++){if(score>=tiers[i]){cur=tiers[i];nxt=tiers[i+1]||tiers[i]*3}else{nxt=tiers[i];break}}
   const pr=Math.min(100,((score-cur)/(nxt-cur))*100);
   $('dpLabel').textContent='To '+fN(nxt)+' pts';$('dpPct').textContent=pr.toFixed(0)+'%';$('dpFill').style.width=pr+'%';
@@ -583,9 +644,10 @@ function updCD(){
   }
 }
 
-function updTicker(p,ch,vol,liq,buys,sells){
-  const cc=ch>=0?'var(--green)':'var(--red)';
-  const items=[{l:'CRAB',v:'$'+p.toFixed(6),c:'var(--gold)'},{l:'24h',v:(ch>=0?'+':'')+ch.toFixed(2)+'%',c:cc},{l:'Vol',v:fU(vol),c:'var(--text)'},{l:'Liq',v:fU(liq),c:'var(--text)'},{l:'Buys',v:String(buys),c:'var(--green)'},{l:'Sells',v:String(sells),c:'var(--red)'},{l:'Pair',v:'CRAB/CAW',c:'var(--accent)'}];
+function updTicker(m){
+  const ch=m.change24h;
+  const cc=ch===null?'var(--text4)':(ch>=0?'var(--green)':'var(--red)');
+  const items=[{l:'CRAB',v:MS.fmtPrice(m.price),c:'var(--gold)'},{l:'24h',v:MS.fmtPct(ch),c:cc},{l:'Vol',v:fU(m.volume24h),c:'var(--text)'},{l:'Liq',v:fU(m.liquidity),c:'var(--text)'},{l:'Buys',v:fN(m.buys24h),c:'var(--green)'},{l:'Sells',v:fN(m.sells24h),c:'var(--red)'},{l:'Pair',v:'CRAB/CAW',c:'var(--accent)'}];
   $('ticker').innerHTML=[...items,...items].map((it,i)=>(i?'<div class="tsep"></div>':'')+'<div class="ti"><span class="tl">'+it.l+'</span><span class="tv" style="color:'+it.c+'">'+it.v+'</span></div>').join('');
 }
 
@@ -595,10 +657,13 @@ document.addEventListener('keydown',e=>{
 });
 
 updCD();setInterval(updCD,1e3);
-updTicker(0,0,0,0,0,0);
+updTicker(MS.market(null)); // nothing fetched yet — show "--", not zeros
 async function init(){log('Init CRAB Trading Season (snapshot mode)...');await loadSnapshot()}
 init();
-// Refresh from snapshot every 60s. Snapshot itself updates every 5min via GitHub Actions.
+// Re-read the snapshot every 60s. The snapshot itself is rebuilt by a GitHub
+// Actions `schedule:` workflow whose delivery is best-effort, so its real
+// cadence is far looser than the declared cron — hence the freshness check
+// above rather than any assumption about how old the file can be.
 setInterval(loadSnapshot,60000);
 </script>
 </body>

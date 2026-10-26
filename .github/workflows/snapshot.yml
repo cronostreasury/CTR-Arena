@@ -7,7 +7,7 @@ on:
   push:
     paths:
       - 'scripts/build-snapshot.js'
-      - 'scripts/build-claims.js'
+      - 'scripts/lib/**'
       - '.github/workflows/snapshot.yml'
 
 permissions:
@@ -32,9 +32,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-
-      - name: Install dependencies
-        run: npm install --no-save ethers @openzeppelin/merkle-tree
 
       - name: Build snapshot (chain → season.json)
         run: node scripts/build-snapshot.js
