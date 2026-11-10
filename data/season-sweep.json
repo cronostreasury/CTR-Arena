@@ -1,15 +1,15 @@
 {
-  "updatedAt": 1794334383,
+  "updatedAt": 1794352824,
   "seasonStart": 1782864000,
   "seasonEnd": 1785456000,
   "seasonDays": 30,
   "market": {
     "price": 0.000002841,
-    "change24h": -1.99,
-    "volume24h": 2.79,
+    "change24h": 0,
+    "volume24h": 0.47,
     "liquidity": 1379.84,
     "buys24h": 1,
-    "sells24h": 1
+    "sells24h": 0
   },
   "stats": {
     "totalTrades": 1390,
@@ -99,7 +99,7 @@
       "sV": 715.56,
       "bC": 0,
       "sC": 42046111.3212,
-      "balC": 319027.8957,
+      "balC": 319100.292,
       "aw": 0,
       "hb": 1.5,
       "n": 78,
@@ -883,7 +883,7 @@
       "sV": 18.23,
       "bC": 0,
       "sC": 1052162.8857,
-      "balC": 723.9628,
+      "balC": 0,
       "aw": 0,
       "hb": 1.5,
       "n": 1,
